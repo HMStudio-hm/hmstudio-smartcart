@@ -1,7 +1,6 @@
-// HMStudio Smart Cart v1.0.0
+// HMStudio Smart Cart v1.0.1
 // Created by HMStudio
 // Features: Sticky Add to Cart & Offer Timer
-
 (function() {
     console.log('Smart Cart script initialized');
   
@@ -27,7 +26,6 @@
       stickyCartElement: null,
       offerTimerElement: null,
       originalAddToCartBtn: null,
-      productData: null,
   
       async fetchSettings() {
         try {
@@ -48,7 +46,6 @@
         const currentLang = getCurrentLanguage();
         const isRTL = currentLang === 'ar';
   
-        // Remove existing sticky cart if any
         if (this.stickyCartElement) {
           this.stickyCartElement.remove();
         }
@@ -57,15 +54,14 @@
         container.id = 'hmstudio-sticky-cart';
         container.style.cssText = `
           position: fixed;
-          ${this.settings.stickyCart.position === 'bottom' ? 'left: 0; right: 0;' : 'right: 20px;'}
-          bottom: 20px;
+          left: 0;
+          right: 0;
+          bottom: 0;
           background: white;
           box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
           padding: 15px;
           z-index: 999;
           display: none;
-          border-radius: ${this.settings.stickyCart.position === 'bottom' ? '0' : '8px'};
-          width: ${this.settings.stickyCart.position === 'bottom' ? '100%' : '300px'};
           direction: ${isRTL ? 'rtl' : 'ltr'};
         `;
   
@@ -73,13 +69,13 @@
         innerContent.style.cssText = `
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          gap: 15px;
           max-width: 1200px;
           margin: 0 auto;
-          gap: 15px;
+          padding: 0 20px;
         `;
   
-        // Product info section
+        // Product image and title
         const productInfo = document.createElement('div');
         productInfo.style.cssText = `
           display: flex;
@@ -88,72 +84,69 @@
           flex: 1;
         `;
   
-        // Product image
         const productImage = document.createElement('img');
-        productImage.src = document.querySelector('.product-details-page img')?.src || '';
+        productImage.src = document.querySelector('.product-images img')?.src || '';
         productImage.style.cssText = `
           width: 50px;
           height: 50px;
           object-fit: cover;
           border-radius: 4px;
         `;
-        productInfo.appendChild(productImage);
-  
-        // Product title and price
-        const productText = document.createElement('div');
-        productText.style.cssText = `
-          flex: 1;
-          min-width: 0;
-        `;
   
         const productTitle = document.createElement('div');
         productTitle.textContent = document.querySelector('.product-title')?.textContent || '';
         productTitle.style.cssText = `
-          font-weight: bold;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          font-weight: 500;
+          flex: 1;
         `;
-        productText.appendChild(productTitle);
   
-        const productPrice = document.createElement('div');
-        productPrice.textContent = document.querySelector('.product-price')?.textContent || '';
-        productPrice.style.cssText = `
-          color: #4CAF50;
+        productInfo.appendChild(productImage);
+        productInfo.appendChild(productTitle);
+  
+        // Price
+        const priceElement = document.createElement('div');
+        priceElement.textContent = document.querySelector('.product-formatted-price')?.textContent || '';
+        priceElement.style.cssText = `
           font-weight: bold;
+          color: var(--theme-text-primary);
         `;
-        productText.appendChild(productPrice);
   
-        productInfo.appendChild(productText);
-  
-        // Quantity selector
+        // Quantity controls
         const quantityWrapper = document.createElement('div');
         quantityWrapper.style.cssText = `
           display: flex;
           align-items: center;
           border: 1px solid #ddd;
           border-radius: 4px;
-          overflow: hidden;
         `;
   
-        const decreaseBtn = document.createElement('button');
-        decreaseBtn.textContent = '-';
-        decreaseBtn.style.cssText = `
-          width: 32px;
-          height: 32px;
-          border: none;
-          background: #f5f5f5;
-          cursor: pointer;
-          font-size: 16px;
-        `;
+        const createButton = (text) => {
+          const btn = document.createElement('button');
+          btn.textContent = text;
+          btn.style.cssText = `
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          `;
+          return btn;
+        };
   
+        const decreaseBtn = createButton('-');
+        const increaseBtn = createButton('+');
+        
         const quantityInput = document.createElement('input');
         quantityInput.type = 'number';
-        quantityInput.min = '1';
         quantityInput.value = '1';
+        quantityInput.min = '1';
         quantityInput.style.cssText = `
           width: 50px;
-          height: 32px;
+          height: 36px;
           border: none;
           border-left: 1px solid #ddd;
           border-right: 1px solid #ddd;
@@ -161,88 +154,77 @@
           -moz-appearance: textfield;
         `;
   
-        const increaseBtn = document.createElement('button');
-        increaseBtn.textContent = '+';
-        increaseBtn.style.cssText = `
-          width: 32px;
-          height: 32px;
+        // Add to cart button
+        const addToCartBtn = document.createElement('button');
+        addToCartBtn.textContent = currentLang === 'ar' ? 'أضف للسلة' : 'Add to Cart';
+        addToCartBtn.style.cssText = `
+          background-color: var(--theme-primary);
+          color: white;
           border: none;
-          background: #f5f5f5;
+          padding: 0 30px;
+          height: 36px;
+          border-radius: 4px;
+          font-weight: 500;
           cursor: pointer;
-          font-size: 16px;
         `;
   
-        // Event listeners for quantity controls
+        // Events
         decreaseBtn.addEventListener('click', () => {
-          const currentValue = parseInt(quantityInput.value);
-          if (currentValue > 1) {
-            quantityInput.value = currentValue - 1;
-            this.updateOriginalQuantity(currentValue - 1);
-          }
+          const val = parseInt(quantityInput.value);
+          if (val > 1) quantityInput.value = val - 1;
+          this.updateOriginalQuantity(quantityInput.value);
         });
   
         increaseBtn.addEventListener('click', () => {
-          const currentValue = parseInt(quantityInput.value);
-          quantityInput.value = currentValue + 1;
-          this.updateOriginalQuantity(currentValue + 1);
+          quantityInput.value = parseInt(quantityInput.value) + 1;
+          this.updateOriginalQuantity(quantityInput.value);
         });
   
         quantityInput.addEventListener('change', () => {
           if (quantityInput.value < 1) quantityInput.value = 1;
-          this.updateOriginalQuantity(parseInt(quantityInput.value));
+          this.updateOriginalQuantity(quantityInput.value);
         });
-  
-        quantityWrapper.appendChild(decreaseBtn);
-        quantityWrapper.appendChild(quantityInput);
-        quantityWrapper.appendChild(increaseBtn);
-  
-        // Add to cart button
-        const addToCartBtn = document.createElement('button');
-        addToCartBtn.textContent = currentLang === 'ar' ? 'أضف إلى السلة' : 'Add to Cart';
-        addToCartBtn.style.cssText = `
-          background-color: #4CAF50;
-          color: white;
-          border: none;
-          padding: 0 20px;
-          height: 40px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-weight: bold;
-          white-space: nowrap;
-        `;
   
         addToCartBtn.addEventListener('click', () => {
           this.originalAddToCartBtn?.click();
         });
   
-        // Assemble the sticky cart
+        // Assemble
+        quantityWrapper.appendChild(decreaseBtn);
+        quantityWrapper.appendChild(quantityInput);
+        quantityWrapper.appendChild(increaseBtn);
+  
         innerContent.appendChild(productInfo);
+        innerContent.appendChild(priceElement);
         innerContent.appendChild(quantityWrapper);
         innerContent.appendChild(addToCartBtn);
-        container.appendChild(innerContent);
   
+        container.appendChild(innerContent);
         document.body.appendChild(container);
         this.stickyCartElement = container;
   
-        // Show/hide sticky cart based on scroll position
+        // Show/hide on scroll
         window.addEventListener('scroll', () => {
           const originalButton = this.originalAddToCartBtn;
           if (!originalButton) return;
   
           const buttonRect = originalButton.getBoundingClientRect();
           const isButtonVisible = buttonRect.top >= 0 && buttonRect.bottom <= window.innerHeight;
-  
           container.style.display = !isButtonVisible ? 'block' : 'none';
         });
       },
   
       createOfferTimer() {
-        const currentLang = getCurrentLanguage();
-        const isRTL = currentLang === 'ar';
-  
-        // Remove existing timer if any
         if (this.offerTimerElement) {
           this.offerTimerElement.remove();
+        }
+  
+        const currentLang = getCurrentLanguage();
+        const endDateTime = new Date(this.settings.offerTimer.endDate + 'T' + this.settings.offerTimer.endTime);
+        
+        if (endDateTime <= new Date()) {
+          console.log('Offer has expired');
+          return;
         }
   
         const container = document.createElement('div');
@@ -250,33 +232,25 @@
         container.style.cssText = `
           background: #FFF3CD;
           color: #856404;
-          padding: 10px;
+          padding: 12px;
           text-align: center;
           border-radius: 4px;
           margin-bottom: 15px;
-          direction: ${isRTL ? 'rtl' : 'ltr'};
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
+          direction: ${currentLang === 'ar' ? 'rtl' : 'ltr'};
         `;
   
         const timerText = document.createElement('span');
-        timerText.textContent = this.settings.offerTimer.text[currentLang];
-        container.appendChild(timerText);
-  
+        timerText.textContent = this.settings.offerTimer.text + ' ';
+        
         const timeDisplay = document.createElement('span');
         timeDisplay.style.fontWeight = 'bold';
+        
+        container.appendChild(timerText);
         container.appendChild(timeDisplay);
   
-        // Calculate end time
-        const totalMinutes = (this.settings.offerTimer.hours * 60) + this.settings.offerTimer.minutes;
-        const endTime = new Date(Date.now() + totalMinutes * 60000);
-  
-        // Update timer function
         const updateTimer = () => {
           const now = new Date();
-          const timeDiff = endTime - now;
+          const timeDiff = endDateTime - now;
   
           if (timeDiff <= 0) {
             clearInterval(timerInterval);
@@ -291,12 +265,10 @@
           timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         };
   
-        // Initial update and start interval
         updateTimer();
         const timerInterval = setInterval(updateTimer, 1000);
   
-        // Insert timer above price
-        const priceElement = document.querySelector('.product-price');
+        const priceElement = document.querySelector('.product-formatted-price.theme-text-primary');
         if (priceElement?.parentNode) {
           priceElement.parentNode.insertBefore(container, priceElement);
           this.offerTimerElement = container;
@@ -307,27 +279,24 @@
         const originalQuantityInput = document.querySelector('input[name="quantity"]');
         if (originalQuantityInput) {
           originalQuantityInput.value = value;
+          // Trigger change event to update any listeners
+          const event = new Event('change', { bubbles: true });
+          originalQuantityInput.dispatchEvent(event);
         }
       },
   
       initialize() {
-        // Find the original add to cart button
-        this.originalAddToCartBtn = document.querySelector('.add-to-cart-btn');
+        if (!document.querySelector('.product-details-page')) {
+          return; // Only run on product pages
+        }
   
-        // Initialize features when settings are loaded
+        this.originalAddToCartBtn = document.querySelector('.add-to-cart-btn');
+        
         this.fetchSettings().then(settings => {
-          if (settings && settings.enabled) {
+          if (settings?.enabled) {
             this.settings = settings;
-            
-            // Only initialize features on product pages
-            if (document.querySelector('.product-details-page')) {
-              if (this.settings.stickyCart.enabled) {
-                this.createStickyCart();
-              }
-              if (this.settings.offerTimer.enabled) {
-                this.createOfferTimer();
-              }
-            }
+            this.createStickyCart();
+            this.createOfferTimer();
           }
         });
       }
