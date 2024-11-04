@@ -1,4 +1,4 @@
-// HMStudio Smart Cart v1.0.2
+// HMStudio Smart Cart v1.0.3
 // Created by HMStudio
 
 (function() {
@@ -26,7 +26,6 @@
       stickyCartElement: null,
       offerTimerElement: null,
       originalAddToCartBtn: null,
-      productData: null,
   
       async fetchSettings() {
         try {
@@ -56,152 +55,110 @@
           right: 0;
           bottom: 0;
           background: white;
-          box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-          padding: 15px;
-          z-index: 999;
+          box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+          padding: 12px 20px;
+          z-index: 999999;
           display: none;
           direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
         `;
   
-        const innerContent = document.createElement('div');
-        innerContent.style.cssText = `
-          display: flex;
-          align-items: center;
-          gap: 15px;
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `
           max-width: 1200px;
           margin: 0 auto;
-          padding: 0 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 15px;
         `;
   
-        // Product image and title
+        // Left section with product info
         const productInfo = document.createElement('div');
         productInfo.style.cssText = `
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           flex: 1;
         `;
   
+        // Product image
         const productImage = document.createElement('img');
-        productImage.src = document.querySelector('.product-images img')?.src || '';
+        const originalImage = document.querySelector('.carousel-img');
+        productImage.src = originalImage?.src || '';
         productImage.style.cssText = `
           width: 50px;
           height: 50px;
-          object-fit: cover;
           border-radius: 4px;
+          object-fit: cover;
         `;
   
+        // Product title
         const productTitle = document.createElement('div');
-        productTitle.textContent = document.querySelector('.product-title')?.textContent || '';
+        productTitle.textContent = document.querySelector('.product-details-page h1')?.textContent || '';
         productTitle.style.cssText = `
+          font-size: 14px;
           font-weight: 500;
-          flex: 1;
+          color: #333;
         `;
   
         productInfo.appendChild(productImage);
         productInfo.appendChild(productTitle);
   
-        // Price
-        const priceElement = document.createElement('div');
-        const originalPrice = document.querySelector('.product-formatted-price.theme-text-primary');
-        priceElement.textContent = originalPrice ? originalPrice.textContent : '';
-        priceElement.style.cssText = `
-          font-weight: bold;
-          color: var(--theme-text-primary);
-        `;
-  
-        // Quantity controls
-        const quantityWrapper = document.createElement('div');
-        quantityWrapper.style.cssText = `
+        // Right section with price and button
+        const actionsSection = document.createElement('div');
+        actionsSection.style.cssText = `
           display: flex;
           align-items: center;
-          border: 1px solid #ddd;
-          border-radius: 4px;
+          gap: 20px;
+          min-width: fit-content;
         `;
   
-        const createButton = (text) => {
-          const btn = document.createElement('button');
-          btn.textContent = text;
-          btn.style.cssText = `
-            width: 36px;
-            height: 36px;
-            border: none;
-            background: #f5f5f5;
-            cursor: pointer;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          `;
-          return btn;
-        };
-  
-        const decreaseBtn = createButton('-');
-        const increaseBtn = createButton('+');
-        
-        const quantityInput = document.createElement('input');
-        quantityInput.type = 'number';
-        quantityInput.value = '1';
-        quantityInput.min = '1';
-        quantityInput.style.cssText = `
-          width: 50px;
-          height: 36px;
-          border: none;
-          border-left: 1px solid #ddd;
-          border-right: 1px solid #ddd;
-          text-align: center;
-          -moz-appearance: textfield;
+        // Price
+        const price = document.createElement('div');
+        price.textContent = document.querySelector('.product-formatted-price.theme-text-primary')?.textContent || '';
+        price.style.cssText = `
+          font-weight: bold;
+          font-size: 16px;
+          white-space: nowrap;
         `;
   
         // Add to cart button
-        const addToCartBtn = document.createElement('button');
-        addToCartBtn.textContent = getCurrentLanguage() === 'ar' ? 'أضف للسلة' : 'Add to Cart';
-        addToCartBtn.style.cssText = `
-          background-color: var(--theme-primary);
+        const addButton = document.createElement('button');
+        addButton.textContent = getCurrentLanguage() === 'ar' ? 'أضف للسلة' : 'Add to Cart';
+        addButton.style.cssText = `
+          background-color: var(--theme-primary, #00b286);
           color: white;
           border: none;
-          padding: 0 30px;
-          height: 36px;
           border-radius: 4px;
+          padding: 0 30px;
+          height: 40px;
           font-weight: 500;
           cursor: pointer;
+          white-space: nowrap;
+          transition: opacity 0.3s ease;
         `;
   
-        // Events
-        decreaseBtn.addEventListener('click', () => {
-          const val = parseInt(quantityInput.value);
-          if (val > 1) {
-            quantityInput.value = val - 1;
-            this.updateOriginalQuantity(quantityInput.value);
-          }
+        addButton.addEventListener('mouseover', () => {
+          addButton.style.opacity = '0.9';
         });
   
-        increaseBtn.addEventListener('click', () => {
-          quantityInput.value = parseInt(quantityInput.value) + 1;
-          this.updateOriginalQuantity(quantityInput.value);
+        addButton.addEventListener('mouseout', () => {
+          addButton.style.opacity = '1';
         });
   
-        quantityInput.addEventListener('change', () => {
-          if (quantityInput.value < 1) quantityInput.value = 1;
-          this.updateOriginalQuantity(quantityInput.value);
-        });
-  
-        addToCartBtn.addEventListener('click', () => {
+        addButton.addEventListener('click', () => {
           this.originalAddToCartBtn?.click();
         });
   
-        // Assemble
-        quantityWrapper.appendChild(decreaseBtn);
-        quantityWrapper.appendChild(quantityInput);
-        quantityWrapper.appendChild(increaseBtn);
+        actionsSection.appendChild(price);
+        actionsSection.appendChild(addButton);
   
-        innerContent.appendChild(productInfo);
-        innerContent.appendChild(priceElement);
-        innerContent.appendChild(quantityWrapper);
-        innerContent.appendChild(addToCartBtn);
-  
-        container.appendChild(innerContent);
+        // Assemble all parts
+        wrapper.appendChild(productInfo);
+        wrapper.appendChild(actionsSection);
+        container.appendChild(wrapper);
         document.body.appendChild(container);
+  
         this.stickyCartElement = container;
   
         // Show/hide on scroll
@@ -211,7 +168,7 @@
   
           const buttonRect = originalButton.getBoundingClientRect();
           const isButtonVisible = buttonRect.top >= 0 && buttonRect.bottom <= window.innerHeight;
-          container.style.display = !isButtonVisible ? 'block' : 'none';
+          container.style.display = !isButtonVisible ? 'flex' : 'none';
         });
       },
   
@@ -220,31 +177,6 @@
           this.offerTimerElement.remove();
         }
   
-        const container = document.createElement('div');
-        container.id = 'hmstudio-offer-timer';
-        container.style.cssText = `
-          background: ${this.settings.offerTimer.backgroundColor || '#FFF3CD'};
-          color: ${this.settings.offerTimer.textColor || '#856404'};
-          padding: 12px;
-          text-align: center;
-          border-radius: 4px;
-          margin-bottom: 15px;
-          direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-        `;
-  
-        const timerText = document.createElement('span');
-        timerText.textContent = this.settings.offerTimer.text;
-        
-        const timeDisplay = document.createElement('span');
-        timeDisplay.style.fontWeight = 'bold';
-        
-        container.appendChild(timerText);
-        container.appendChild(timeDisplay);
-  
         // Calculate end time
         const endDateTime = new Date(this.settings.offerTimer.endDate + 'T' + this.settings.offerTimer.endTime);
         
@@ -252,6 +184,37 @@
           console.log('Offer has expired');
           return;
         }
+  
+        const container = document.createElement('div');
+        container.id = 'hmstudio-offer-timer';
+        container.style.cssText = `
+          background: ${this.settings.offerTimer.backgroundColor || '#FFF3CD'};
+          color: ${this.settings.offerTimer.textColor || '#856404'};
+          padding: 12px 15px;
+          margin-bottom: 15px;
+          border-radius: 4px;
+          text-align: center;
+          direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font-size: 14px;
+        `;
+  
+        const textElement = document.createElement('span');
+        textElement.textContent = this.settings.offerTimer.text;
+        
+        const timeElement = document.createElement('span');
+        timeElement.style.cssText = `
+          font-weight: bold;
+          padding: 2px 6px;
+          border-radius: 3px;
+          background: rgba(0, 0, 0, 0.1);
+        `;
+  
+        container.appendChild(textElement);
+        container.appendChild(timeElement);
   
         // Update timer function
         const updateTimer = () => {
@@ -268,49 +231,59 @@
           const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
           const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
   
-          timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          timeElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         };
   
         // Initial update and start interval
         updateTimer();
         const timerInterval = setInterval(updateTimer, 1000);
   
-        // Find the price element and insert the timer before it
-        const priceElement = document.querySelector('.product-formatted-price.theme-text-primary');
-        if (priceElement?.parentNode) {
-          priceElement.parentNode.insertBefore(container, priceElement);
+        // Insert before price element
+        const priceContainer = document.querySelector('.product-formatted-price.theme-text-primary')?.parentElement;
+        if (priceContainer) {
+          priceContainer.parentElement.insertBefore(container, priceContainer);
           this.offerTimerElement = container;
         } else {
-          console.error('Price element not found');
+          console.error('Price container not found');
         }
       },
   
       updateOriginalQuantity(value) {
-        const originalQuantityInput = document.querySelector('input[name="quantity"]');
-        if (originalQuantityInput) {
-          originalQuantityInput.value = value;
+        const quantitySelect = document.querySelector('select[name="quantity"]');
+        if (quantitySelect) {
+          quantitySelect.value = value;
           // Trigger change event
           const event = new Event('change', { bubbles: true });
-          originalQuantityInput.dispatchEvent(event);
+          quantitySelect.dispatchEvent(event);
         }
       },
   
       initialize() {
         console.log('Initializing Smart Cart features');
-        if (!document.querySelector('.product-details-page')) {
+        
+        // Check if we're on a product page
+        if (!document.querySelector('.product.products-details-page')) {
           console.log('Not a product page, skipping initialization');
           return;
         }
   
-        this.originalAddToCartBtn = document.querySelector('.btn-add-to-cart');
+        // Find the add to cart button
+        this.originalAddToCartBtn = document.querySelector('.btn.btn-add-to-cart');
         console.log('Original add to cart button found:', !!this.originalAddToCartBtn);
-        
+  
+        // Initialize features
         this.fetchSettings().then(settings => {
           if (settings?.enabled) {
             console.log('Smart Cart is enabled, initializing features');
             this.settings = settings;
-            this.createStickyCart();
-            this.createOfferTimer();
+            
+            if (this.settings.offerTimer?.enabled !== false) {
+              this.createOfferTimer();
+            }
+            
+            if (this.settings.stickyCart?.enabled !== false) {
+              this.createStickyCart();
+            }
           } else {
             console.log('Smart Cart is disabled');
           }
