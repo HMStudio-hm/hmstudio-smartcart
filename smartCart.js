@@ -1,4 +1,4 @@
-// HMStudio Smart Cart v1.0.6
+// HMStudio Smart Cart v1.0.7
 // Created by HMStudio
 
 (function() {
@@ -24,7 +24,7 @@
     const SmartCart = {
       settings: null,
       stickyCartElement: null,
-      offerTimerElement: null,
+      countdownTimerElement: null,
       originalAddToCartBtn: null,
   
       async fetchSettings() {
@@ -191,25 +191,25 @@
         });
       },
   
-      createOfferTimer() {
-        if (this.offerTimerElement) {
-          this.offerTimerElement.remove();
+      createCountdownTimer() {
+        if (this.countdownTimerElement) {
+          this.countdownTimerElement.remove();
         }
-      
-        const settings = this.settings.offerTimer;
+  
+        const settings = this.settings.countdownTimer;
         if (!settings) {
           console.log('Timer settings missing');
           return;
         }
-      
+  
         console.log('Creating timer with settings:', settings);
-      
+  
         // Calculate time remaining in milliseconds
         const totalMilliseconds = (settings.hours * 60 + settings.minutes) * 60 * 1000;
         const endTime = new Date(Date.now() + totalMilliseconds);
-      
+  
         const container = document.createElement('div');
-        container.id = 'hmstudio-offer-timer';
+        container.id = 'hmstudio-countdown-timer';
         container.style.cssText = `
           background: ${settings.backgroundColor || '#000000'};
           color: ${settings.textColor || '#ffffff'};
@@ -224,9 +224,9 @@
           gap: 8px;
           font-size: 14px;
         `;
-      
+  
         const textElement = document.createElement('span');
-        textElement.textContent = settings.text || 'عرض محدود! ينتهي خلال';
+        textElement.textContent = settings.text;
         
         const timeElement = document.createElement('span');
         timeElement.style.cssText = `
@@ -235,37 +235,37 @@
           border-radius: 3px;
           background: rgba(255, 255, 255, 0.1);
         `;
-      
+  
         container.appendChild(textElement);
         container.appendChild(timeElement);
-      
+  
         // Update timer function
         const updateTimer = () => {
           const now = new Date();
           const timeDiff = endTime - now;
-      
+  
           if (timeDiff <= 0) {
             clearInterval(timerInterval);
             container.remove();
             return;
           }
-      
+  
           const hours = Math.floor(timeDiff / (1000 * 60 * 60));
           const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
           const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-      
+  
           timeElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         };
-      
+  
         // Initial update and start interval
         updateTimer();
         const timerInterval = setInterval(updateTimer, 1000);
-      
+  
         // Insert before price element
         const priceContainer = document.querySelector('.product-formatted-price.theme-text-primary')?.parentElement;
         if (priceContainer) {
           priceContainer.parentElement.insertBefore(container, priceContainer);
-          this.offerTimerElement = container;
+          this.countdownTimerElement = container;
         } else {
           console.error('Price container not found');
         }
@@ -299,12 +299,12 @@
           if (settings?.enabled) {
             console.log('Smart Cart is enabled, initializing features with settings:', settings);
             this.settings = settings;
-  
-            if (settings.offerTimer?.enabled) {
-              console.log('Initializing offer timer');
-              this.createOfferTimer();
+            
+            if (settings.countdownTimer) {
+              console.log('Initializing countdown timer');
+              this.createCountdownTimer();
             }
-  
+            
             console.log('Initializing sticky cart');
             this.createStickyCart();
           } else {
