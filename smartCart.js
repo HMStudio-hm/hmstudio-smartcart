@@ -1,4 +1,4 @@
-// HMStudio Smart Cart v1.0.4
+// HMStudio Smart Cart v1.0.5
 // Created by HMStudio
 
 (function() {
@@ -197,24 +197,22 @@
         }
   
         const settings = this.settings.offerTimer;
-        if (!settings || !settings.endDate || !settings.endTime) {
-          console.error('Invalid timer settings');
+        if (!settings || !settings.enabled) {
+          console.log('Timer is disabled or settings missing', settings);
           return;
         }
   
-        // Calculate end time
-        const endDateTime = new Date(settings.endDate + 'T' + settings.endTime);
-        
-        if (endDateTime <= new Date()) {
-          console.log('Offer has expired');
-          return;
-        }
+        console.log('Creating timer with settings:', settings);
+  
+        // Calculate time remaining in milliseconds
+        const totalMilliseconds = (settings.hours * 60 + settings.minutes) * 60 * 1000;
+        const endTime = new Date(Date.now() + totalMilliseconds);
   
         const container = document.createElement('div');
         container.id = 'hmstudio-offer-timer';
         container.style.cssText = `
-          background: ${settings.backgroundColor || '#FFF3CD'};
-          color: ${settings.textColor || '#856404'};
+          background: ${settings.backgroundColor || '#000000'};
+          color: ${settings.textColor || '#ffffff'};
           padding: 12px 15px;
           margin-bottom: 15px;
           border-radius: 4px;
@@ -228,14 +226,15 @@
         `;
   
         const textElement = document.createElement('span');
-        textElement.textContent = settings.text || 'عرض محدود! ينتهي خلال';
+        const currentLang = getCurrentLanguage();
+        textElement.textContent = settings.text[currentLang] || settings.text.ar;
         
         const timeElement = document.createElement('span');
         timeElement.style.cssText = `
           font-weight: bold;
           padding: 2px 6px;
           border-radius: 3px;
-          background: rgba(0, 0, 0, 0.1);
+          background: rgba(255, 255, 255, 0.1);
         `;
   
         container.appendChild(textElement);
@@ -244,7 +243,7 @@
         // Update timer function
         const updateTimer = () => {
           const now = new Date();
-          const timeDiff = endDateTime - now;
+          const timeDiff = endTime - now;
   
           if (timeDiff <= 0) {
             clearInterval(timerInterval);
@@ -301,12 +300,12 @@
           if (settings?.enabled) {
             console.log('Smart Cart is enabled, initializing features with settings:', settings);
             this.settings = settings;
-            
-            if (settings.offerTimer) {
+  
+            if (settings.offerTimer?.enabled) {
               console.log('Initializing offer timer');
               this.createOfferTimer();
             }
-            
+  
             console.log('Initializing sticky cart');
             this.createStickyCart();
           } else {
