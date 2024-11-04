@@ -1,4 +1,4 @@
-// HMStudio Smart Cart v1.0.3
+// HMStudio Smart Cart v1.0.4
 // Created by HMStudio
 
 (function() {
@@ -68,59 +68,77 @@
           margin: 0 auto;
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content: center;
           gap: 15px;
         `;
   
-        // Left section with product info
-        const productInfo = document.createElement('div');
-        productInfo.style.cssText = `
+        // Create quantity controls
+        const quantityWrapper = document.createElement('div');
+        quantityWrapper.style.cssText = `
           display: flex;
           align-items: center;
-          gap: 12px;
-          flex: 1;
-        `;
-  
-        // Product image
-        const productImage = document.createElement('img');
-        const originalImage = document.querySelector('.carousel-img');
-        productImage.src = originalImage?.src || '';
-        productImage.style.cssText = `
-          width: 50px;
-          height: 50px;
+          border: 1px solid #ddd;
           border-radius: 4px;
-          object-fit: cover;
+          overflow: hidden;
         `;
   
-        // Product title
-        const productTitle = document.createElement('div');
-        productTitle.textContent = document.querySelector('.product-details-page h1')?.textContent || '';
-        productTitle.style.cssText = `
-          font-size: 14px;
-          font-weight: 500;
-          color: #333;
+        const createButton = (text, onClick) => {
+          const btn = document.createElement('button');
+          btn.textContent = text;
+          btn.style.cssText = `
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s;
+          `;
+          btn.addEventListener('mouseover', () => btn.style.backgroundColor = '#e0e0e0');
+          btn.addEventListener('mouseout', () => btn.style.backgroundColor = '#f5f5f5');
+          btn.addEventListener('click', onClick);
+          return btn;
+        };
+  
+        const quantityInput = document.createElement('input');
+        quantityInput.type = 'number';
+        quantityInput.value = '1';
+        quantityInput.min = '1';
+        quantityInput.style.cssText = `
+          width: 50px;
+          height: 36px;
+          border: none;
+          border-left: 1px solid #ddd;
+          border-right: 1px solid #ddd;
+          text-align: center;
+          -moz-appearance: textfield;
         `;
   
-        productInfo.appendChild(productImage);
-        productInfo.appendChild(productTitle);
+        quantityInput.addEventListener('change', () => {
+          if (quantityInput.value < 1) quantityInput.value = 1;
+          this.updateOriginalQuantity(quantityInput.value);
+        });
   
-        // Right section with price and button
-        const actionsSection = document.createElement('div');
-        actionsSection.style.cssText = `
-          display: flex;
-          align-items: center;
-          gap: 20px;
-          min-width: fit-content;
-        `;
+        const decreaseBtn = createButton('-', () => {
+          const val = parseInt(quantityInput.value);
+          if (val > 1) {
+            quantityInput.value = val - 1;
+            this.updateOriginalQuantity(val - 1);
+          }
+        });
   
-        // Price
-        const price = document.createElement('div');
-        price.textContent = document.querySelector('.product-formatted-price.theme-text-primary')?.textContent || '';
-        price.style.cssText = `
-          font-weight: bold;
-          font-size: 16px;
-          white-space: nowrap;
-        `;
+        const increaseBtn = createButton('+', () => {
+          const val = parseInt(quantityInput.value);
+          quantityInput.value = val + 1;
+          this.updateOriginalQuantity(val + 1);
+        });
+  
+        quantityWrapper.appendChild(decreaseBtn);
+        quantityWrapper.appendChild(quantityInput);
+        quantityWrapper.appendChild(increaseBtn);
   
         // Add to cart button
         const addButton = document.createElement('button');
@@ -138,24 +156,25 @@
           transition: opacity 0.3s ease;
         `;
   
-        addButton.addEventListener('mouseover', () => {
-          addButton.style.opacity = '0.9';
-        });
-  
-        addButton.addEventListener('mouseout', () => {
-          addButton.style.opacity = '1';
-        });
-  
+        addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
+        addButton.addEventListener('mouseout', () => addButton.style.opacity = '1');
         addButton.addEventListener('click', () => {
+          this.updateOriginalQuantity(quantityInput.value);
           this.originalAddToCartBtn?.click();
         });
   
-        actionsSection.appendChild(price);
-        actionsSection.appendChild(addButton);
+        // Assemble controls section
+        const controlsSection = document.createElement('div');
+        controlsSection.style.cssText = `
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        `;
   
-        // Assemble all parts
-        wrapper.appendChild(productInfo);
-        wrapper.appendChild(actionsSection);
+        controlsSection.appendChild(quantityWrapper);
+        controlsSection.appendChild(addButton);
+  
+        wrapper.appendChild(controlsSection);
         container.appendChild(wrapper);
         document.body.appendChild(container);
   
@@ -168,7 +187,7 @@
   
           const buttonRect = originalButton.getBoundingClientRect();
           const isButtonVisible = buttonRect.top >= 0 && buttonRect.bottom <= window.innerHeight;
-          container.style.display = !isButtonVisible ? 'flex' : 'none';
+          container.style.display = !isButtonVisible ? 'block' : 'none';
         });
       },
   
@@ -177,8 +196,14 @@
           this.offerTimerElement.remove();
         }
   
+        const settings = this.settings.offerTimer;
+        if (!settings || !settings.endDate || !settings.endTime) {
+          console.error('Invalid timer settings');
+          return;
+        }
+  
         // Calculate end time
-        const endDateTime = new Date(this.settings.offerTimer.endDate + 'T' + this.settings.offerTimer.endTime);
+        const endDateTime = new Date(settings.endDate + 'T' + settings.endTime);
         
         if (endDateTime <= new Date()) {
           console.log('Offer has expired');
@@ -188,8 +213,8 @@
         const container = document.createElement('div');
         container.id = 'hmstudio-offer-timer';
         container.style.cssText = `
-          background: ${this.settings.offerTimer.backgroundColor || '#FFF3CD'};
-          color: ${this.settings.offerTimer.textColor || '#856404'};
+          background: ${settings.backgroundColor || '#FFF3CD'};
+          color: ${settings.textColor || '#856404'};
           padding: 12px 15px;
           margin-bottom: 15px;
           border-radius: 4px;
@@ -203,7 +228,7 @@
         `;
   
         const textElement = document.createElement('span');
-        textElement.textContent = this.settings.offerTimer.text;
+        textElement.textContent = settings.text || 'عرض محدود! ينتهي خلال';
         
         const timeElement = document.createElement('span');
         timeElement.style.cssText = `
@@ -274,16 +299,16 @@
         // Initialize features
         this.fetchSettings().then(settings => {
           if (settings?.enabled) {
-            console.log('Smart Cart is enabled, initializing features');
+            console.log('Smart Cart is enabled, initializing features with settings:', settings);
             this.settings = settings;
             
-            if (this.settings.offerTimer?.enabled !== false) {
+            if (settings.offerTimer) {
+              console.log('Initializing offer timer');
               this.createOfferTimer();
             }
             
-            if (this.settings.stickyCart?.enabled !== false) {
-              this.createStickyCart();
-            }
+            console.log('Initializing sticky cart');
+            this.createStickyCart();
           } else {
             console.log('Smart Cart is disabled');
           }
