@@ -1,4 +1,5 @@
-// HMStudio Smart Cart v1.0.7
+// scripts/smartCart.js
+// HMStudio Smart Cart v1.0.8
 // Created by HMStudio
 
 (function() {
@@ -24,7 +25,7 @@
     const SmartCart = {
       settings: null,
       stickyCartElement: null,
-      countdownTimerElement: null,
+      offerTimerElement: null,
       originalAddToCartBtn: null,
   
       async fetchSettings() {
@@ -191,14 +192,14 @@
         });
       },
   
-      createCountdownTimer() {
-        if (this.countdownTimerElement) {
-          this.countdownTimerElement.remove();
+      createOfferTimer() {
+        if (this.offerTimerElement) {
+          this.offerTimerElement.remove();
         }
   
-        const settings = this.settings.countdownTimer;
-        if (!settings) {
-          console.log('Timer settings missing');
+        const settings = this.settings.offerTimer;
+        if (!settings || !settings.enabled) {
+          console.log('Timer is disabled or settings missing');
           return;
         }
   
@@ -209,7 +210,7 @@
         const endTime = new Date(Date.now() + totalMilliseconds);
   
         const container = document.createElement('div');
-        container.id = 'hmstudio-countdown-timer';
+        container.id = 'hmstudio-offer-timer';
         container.style.cssText = `
           background: ${settings.backgroundColor || '#000000'};
           color: ${settings.textColor || '#ffffff'};
@@ -265,7 +266,7 @@
         const priceContainer = document.querySelector('.product-formatted-price.theme-text-primary')?.parentElement;
         if (priceContainer) {
           priceContainer.parentElement.insertBefore(container, priceContainer);
-          this.countdownTimerElement = container;
+          this.offerTimerElement = container;
         } else {
           console.error('Price container not found');
         }
@@ -300,9 +301,9 @@
             console.log('Smart Cart is enabled, initializing features with settings:', settings);
             this.settings = settings;
             
-            if (settings.countdownTimer) {
-              console.log('Initializing countdown timer');
-              this.createCountdownTimer();
+            if (settings.offerTimer) {
+              console.log('Initializing offer timer');
+              this.createOfferTimer();
             }
             
             console.log('Initializing sticky cart');
