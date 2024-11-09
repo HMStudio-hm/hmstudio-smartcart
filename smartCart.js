@@ -1,5 +1,5 @@
 // src/scripts/smartCart.js 
-// HMStudio Smart Cart v1.0.9
+// HMStudio Smart Cart v1.1.0
 // Created by HMStudio
 
 (function() {
