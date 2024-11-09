@@ -1,4 +1,4 @@
-// scripts/smartCart.js
+// src/scripts/smartCart.js 
 // HMStudio Smart Cart v1.0.9
 // Created by HMStudio
 
@@ -24,9 +24,10 @@
 
   const SmartCart = {
     settings: null,
+    campaigns: [],
     stickyCartElement: null,
-    offerTimerElement: null,
-    originalAddToCartBtn: null,
+    currentProductId: null,
+    activeCampaignTimer: null,
 
     async fetchSettings() {
       try {
@@ -36,11 +37,24 @@
         }
         const data = await response.json();
         console.log('Fetched Smart Cart settings:', data);
+        this.settings = data;
+        this.campaigns = data.campaigns || [];
         return data;
       } catch (error) {
         console.error('Error fetching Smart Cart settings:', error);
         return null;
       }
+    },
+
+    findActiveCampaignForProduct(productId) {
+      const now = new Date();
+      return this.campaigns.find(campaign => {
+        const startDate = new Date(campaign.startDate.seconds * 1000);
+        const endDate = new Date(campaign.endDate.seconds * 1000);
+        const isActive = now >= startDate && now <= endDate;
+        const includesProduct = campaign.products.some(p => p.id === productId);
+        return isActive && includesProduct && campaign.status === 'active';
+      });
     },
 
     createStickyCart() {
@@ -73,73 +87,7 @@
         gap: 15px;
       `;
 
-      const quantityWrapper = document.createElement('div');
-      quantityWrapper.style.cssText = `
-        display: flex;
-        align-items: center;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        overflow: hidden;
-      `;
-
-      const createButton = (text, onClick) => {
-        const btn = document.createElement('button');
-        btn.textContent = text;
-        btn.style.cssText = `
-          width: 36px;
-          height: 36px;
-          border: none;
-          background: #f5f5f5;
-          cursor: pointer;
-          font-size: 18px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: background-color 0.3s;
-        `;
-        btn.addEventListener('mouseover', () => btn.style.backgroundColor = '#e0e0e0');
-        btn.addEventListener('mouseout', () => btn.style.backgroundColor = '#f5f5f5');
-        btn.addEventListener('click', onClick);
-        return btn;
-      };
-
-      const quantityInput = document.createElement('input');
-      quantityInput.type = 'number';
-      quantityInput.value = '1';
-      quantityInput.min = '1';
-      quantityInput.style.cssText = `
-        width: 50px;
-        height: 36px;
-        border: none;
-        border-left: 1px solid #ddd;
-        border-right: 1px solid #ddd;
-        text-align: center;
-        -moz-appearance: textfield;
-      `;
-
-      quantityInput.addEventListener('change', () => {
-        if (quantityInput.value < 1) quantityInput.value = 1;
-        this.updateOriginalQuantity(quantityInput.value);
-      });
-
-      const decreaseBtn = createButton('-', () => {
-        const val = parseInt(quantityInput.value);
-        if (val > 1) {
-          quantityInput.value = val - 1;
-          this.updateOriginalQuantity(val - 1);
-        }
-      });
-
-      const increaseBtn = createButton('+', () => {
-        const val = parseInt(quantityInput.value);
-        quantityInput.value = val + 1;
-        this.updateOriginalQuantity(val + 1);
-      });
-
-      quantityWrapper.appendChild(decreaseBtn);
-      quantityWrapper.appendChild(quantityInput);
-      quantityWrapper.appendChild(increaseBtn);
-
+      // Add to cart button
       const addButton = document.createElement('button');
       addButton.textContent = getCurrentLanguage() === 'ar' ? 'أضف للسلة' : 'Add to Cart';
       addButton.style.cssText = `
@@ -158,28 +106,21 @@
       addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
       addButton.addEventListener('mouseout', () => addButton.style.opacity = '1');
       addButton.addEventListener('click', () => {
-        this.updateOriginalQuantity(quantityInput.value);
-        this.originalAddToCartBtn?.click();
+        const originalButton = document.querySelector('.btn.btn-add-to-cart');
+        if (originalButton) {
+          originalButton.click();
+        }
       });
 
-      const controlsSection = document.createElement('div');
-      controlsSection.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 15px;
-      `;
-
-      controlsSection.appendChild(quantityWrapper);
-      controlsSection.appendChild(addButton);
-
-      wrapper.appendChild(controlsSection);
+      wrapper.appendChild(addButton);
       container.appendChild(wrapper);
       document.body.appendChild(container);
 
       this.stickyCartElement = container;
 
+      // Show/hide on scroll
       window.addEventListener('scroll', () => {
-        const originalButton = this.originalAddToCartBtn;
+        const originalButton = document.querySelector('.btn.btn-add-to-cart');
         if (!originalButton) return;
 
         const buttonRect = originalButton.getBoundingClientRect();
@@ -188,27 +129,12 @@
       });
     },
 
-    createOfferTimer() {
-      if (this.offerTimerElement) {
-        this.offerTimerElement.remove();
-      }
-
-      const settings = this.settings.offerTimer;
-      if (!settings || !settings.enabled) {
-        console.log('Timer is disabled or settings missing');
-        return;
-      }
-
-      console.log('Creating timer with settings:', settings);
-
-      const durationMilliseconds = (settings.hours * 60 + settings.minutes) * 60 * 1000;
-      let endTime = new Date(Date.now() + durationMilliseconds);
-
+    createCountdownTimer(campaign) {
       const container = document.createElement('div');
-      container.id = 'hmstudio-offer-timer';
+      container.id = 'hmstudio-countdown-timer';
       container.style.cssText = `
-        background: ${settings.backgroundColor || '#000000'};
-        color: ${settings.textColor || '#ffffff'};
+        background: ${campaign.timerSettings.backgroundColor};
+        color: ${campaign.timerSettings.textColor};
         padding: 12px 15px;
         margin-bottom: 15px;
         border-radius: 4px;
@@ -222,7 +148,7 @@
       `;
 
       const textElement = document.createElement('span');
-      textElement.textContent = settings.text;
+      textElement.textContent = campaign.timerSettings.text;
       
       const timeElement = document.createElement('span');
       timeElement.style.cssText = `
@@ -235,86 +161,91 @@
       container.appendChild(textElement);
       container.appendChild(timeElement);
 
+      const endDate = new Date(campaign.endDate.seconds * 1000);
+
       const updateTimer = () => {
         const now = new Date();
-        const timeDiff = endTime - now;
+        const timeDiff = endDate - now;
 
         if (timeDiff <= 0) {
-          endTime = new Date(Date.now() + durationMilliseconds);
-          console.log('Timer restarted');
+          container.remove();
+          clearInterval(timerInterval);
+          return;
         }
 
-        const currentDiff = endTime - new Date();
-        const hours = Math.floor(currentDiff / (1000 * 60 * 60));
-        const minutes = Math.floor((currentDiff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((currentDiff % (1000 * 60)) / 1000);
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
 
         timeElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
       };
 
+      // Initial update and start interval
       updateTimer();
       const timerInterval = setInterval(updateTimer, 1000);
 
-      const priceContainer = document.querySelector('.product-formatted-price.theme-text-primary')?.parentElement;
-      if (priceContainer) {
-        priceContainer.parentElement.insertBefore(container, priceContainer);
-        this.offerTimerElement = container;
-      } else {
-        console.error('Price container not found');
-      }
-
-      const observer = new MutationObserver((mutations, obs) => {
-        if (!document.body.contains(container)) {
-          clearInterval(timerInterval);
-          obs.disconnect();
-        }
-      });
-
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
+      return { container, interval: timerInterval };
     },
 
-    updateOriginalQuantity(value) {
-      const quantitySelect = document.querySelector('select[name="quantity"]');
-      if (quantitySelect) {
-        quantitySelect.value = value;
-        const event = new Event('change', { bubbles: true });
-        quantitySelect.dispatchEvent(event);
+    setupCountdownTimer() {
+      // Clear any existing timer
+      if (this.activeCampaignTimer) {
+        clearInterval(this.activeCampaignTimer.interval);
+        this.activeCampaignTimer.container.remove();
+        this.activeCampaignTimer = null;
+      }
+
+      // Get current product ID
+      const productForm = document.querySelector('form[data-product-id]');
+      if (!productForm) return;
+      
+      this.currentProductId = productForm.getAttribute('data-product-id');
+      
+      // Find active campaign for this product
+      const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
+      if (!activeCampaign) return;
+
+      // Create and insert timer
+      const timerElements = this.createCountdownTimer(activeCampaign);
+      this.activeCampaignTimer = timerElements;
+
+      // Insert before price element
+      const priceContainer = document.querySelector('.product-formatted-price.theme-text-primary')?.parentElement;
+      if (priceContainer) {
+        priceContainer.parentElement.insertBefore(timerElements.container, priceContainer);
       }
     },
 
     initialize() {
-      console.log('Initializing Smart Cart features');
+      console.log('Initializing Smart Cart');
       
+      // Check if we're on a product page
       if (!document.querySelector('.product.products-details-page')) {
         console.log('Not a product page, skipping initialization');
         return;
       }
 
-      this.originalAddToCartBtn = document.querySelector('.btn.btn-add-to-cart');
-      console.log('Original add to cart button found:', !!this.originalAddToCartBtn);
-
+      // Initialize features
       this.fetchSettings().then(settings => {
         if (settings?.enabled) {
-          console.log('Smart Cart is enabled, initializing features with settings:', settings);
-          this.settings = settings;
-          
-          if (settings.offerTimer) {
-            console.log('Initializing offer timer');
-            this.createOfferTimer();
-          }
-          
-          console.log('Initializing sticky cart');
+          console.log('Smart Cart is enabled, initializing features');
           this.createStickyCart();
-        } else {
-          console.log('Smart Cart is disabled');
+          this.setupCountdownTimer();
+
+          // Set up observer for dynamic content changes
+          const observer = new MutationObserver(() => {
+            if (!document.getElementById('hmstudio-countdown-timer')) {
+              this.setupCountdownTimer();
+            }
+          });
+
+          observer.observe(document.body, { childList: true, subtree: true });
         }
       });
     }
   };
 
+  // Initialize when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => SmartCart.initialize());
   } else {
