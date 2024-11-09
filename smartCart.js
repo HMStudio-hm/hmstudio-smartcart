@@ -1,6 +1,5 @@
-// src/scripts/smartCart.js 
-// HMStudio Smart Cart v1.1.0
-// Created by HMStudio
+// src/scripts/smartCart.js v1.1.1
+// HMStudio Smart Cart with Campaign Support
 
 (function() {
   console.log('Smart Cart script initialized');
@@ -10,6 +9,21 @@
     const scriptUrl = new URL(scriptTag.src);
     const storeId = scriptUrl.searchParams.get('storeId');
     return storeId ? storeId.split('?')[0] : null;
+  }
+
+  function getCampaignsFromUrl() {
+    const scriptTag = document.currentScript;
+    const scriptUrl = new URL(scriptTag.src);
+    const campaignsData = scriptUrl.searchParams.get('campaigns');
+    if (!campaignsData) return [];
+
+    try {
+      const decodedData = atob(campaignsData);
+      return JSON.parse(decodedData);
+    } catch (error) {
+      console.error('Error parsing campaigns data:', error);
+      return [];
+    }
   }
 
   function getCurrentLanguage() {
@@ -24,38 +38,10 @@
 
   const SmartCart = {
     settings: null,
-    campaigns: [],
+    campaigns: getCampaignsFromUrl(),
     stickyCartElement: null,
     currentProductId: null,
-    activeCampaignTimer: null,
-
-    async fetchSettings() {
-      try {
-        const response = await fetch(`https://europe-west3-hmstudio-85f42.cloudfunctions.net/getSmartCartSettings?storeId=${storeId}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch settings: ${response.statusText}`);
-        }
-        const data = await response.json();
-        console.log('Fetched Smart Cart settings:', data);
-        this.settings = data;
-        this.campaigns = data.campaigns || [];
-        return data;
-      } catch (error) {
-        console.error('Error fetching Smart Cart settings:', error);
-        return null;
-      }
-    },
-
-    findActiveCampaignForProduct(productId) {
-      const now = new Date();
-      return this.campaigns.find(campaign => {
-        const startDate = new Date(campaign.startDate.seconds * 1000);
-        const endDate = new Date(campaign.endDate.seconds * 1000);
-        const isActive = now >= startDate && now <= endDate;
-        const includesProduct = campaign.products.some(p => p.id === productId);
-        return isActive && includesProduct && campaign.status === 'active';
-      });
-    },
+    activeTimers: new Map(),
 
     createStickyCart() {
       if (this.stickyCartElement) {
@@ -129,9 +115,32 @@
       });
     },
 
-    createCountdownTimer(campaign) {
+    findActiveCampaignForProduct(productId) {
+      const now = new Date();
+      return this.campaigns.find(campaign => {
+        const startDate = new Date(campaign.startDate.seconds * 1000);
+        const endDate = new Date(campaign.endDate.seconds * 1000);
+        const isActive = campaign.status === 'active' && 
+                        now >= startDate && 
+                        now <= endDate;
+        const includesProduct = campaign.products.some(p => p.id === productId);
+        return isActive && includesProduct;
+      });
+    },
+
+    createCountdownTimer(campaign, productId) {
+      // Remove existing timer if any
+      const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`);
+      if (existingTimer) {
+        existingTimer.remove();
+        if (this.activeTimers.has(productId)) {
+          clearInterval(this.activeTimers.get(productId));
+          this.activeTimers.delete(productId);
+        }
+      }
+
       const container = document.createElement('div');
-      container.id = 'hmstudio-countdown-timer';
+      container.id = `hmstudio-countdown-${productId}`;
       container.style.cssText = `
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
@@ -170,6 +179,7 @@
         if (timeDiff <= 0) {
           container.remove();
           clearInterval(timerInterval);
+          this.activeTimers.delete(productId);
           return;
         }
 
@@ -183,16 +193,20 @@
       // Initial update and start interval
       updateTimer();
       const timerInterval = setInterval(updateTimer, 1000);
+      this.activeTimers.set(productId, timerInterval);
 
-      return { container, interval: timerInterval };
+      return container;
     },
 
-    setupCountdownTimer() {
+    setupProductTimer() {
       // Clear any existing timer
-      if (this.activeCampaignTimer) {
-        clearInterval(this.activeCampaignTimer.interval);
-        this.activeCampaignTimer.container.remove();
-        this.activeCampaignTimer = null;
+      if (this.activeTimers.size > 0) {
+        this.activeTimers.forEach((interval, productId) => {
+          clearInterval(interval);
+          const timer = document.getElementById(`hmstudio-countdown-${productId}`);
+          if (timer) timer.remove();
+        });
+        this.activeTimers.clear();
       }
 
       // Get current product ID
@@ -206,42 +220,70 @@
       if (!activeCampaign) return;
 
       // Create and insert timer
-      const timerElements = this.createCountdownTimer(activeCampaign);
-      this.activeCampaignTimer = timerElements;
+      const timer = this.createCountdownTimer(activeCampaign, this.currentProductId);
 
       // Insert before price element
       const priceContainer = document.querySelector('.product-formatted-price.theme-text-primary')?.parentElement;
       if (priceContainer) {
-        priceContainer.parentElement.insertBefore(timerElements.container, priceContainer);
+        priceContainer.parentElement.insertBefore(timer, priceContainer);
       }
     },
 
-    initialize() {
-      console.log('Initializing Smart Cart');
-      
-      // Check if we're on a product page
-      if (!document.querySelector('.product.products-details-page')) {
-        console.log('Not a product page, skipping initialization');
-        return;
-      }
+    setupProductListTimers() {
+      const productCards = document.querySelectorAll('.product-item.position-relative');
+      productCards.forEach(card => {
+        const productId = card.querySelector('[data-wishlist-id]')?.getAttribute('data-wishlist-id');
+        if (!productId) return;
 
-      // Initialize features
-      this.fetchSettings().then(settings => {
-        if (settings?.enabled) {
-          console.log('Smart Cart is enabled, initializing features');
-          this.createStickyCart();
-          this.setupCountdownTimer();
+        const activeCampaign = this.findActiveCampaignForProduct(productId);
+        if (!activeCampaign) return;
 
-          // Set up observer for dynamic content changes
-          const observer = new MutationObserver(() => {
-            if (!document.getElementById('hmstudio-countdown-timer')) {
-              this.setupCountdownTimer();
-            }
-          });
-
-          observer.observe(document.body, { childList: true, subtree: true });
+        const timer = this.createCountdownTimer(activeCampaign, productId);
+        
+        // Insert timer in product card
+        const priceElement = card.querySelector('.product-formatted-price');
+        if (priceElement) {
+          priceElement.parentElement.insertBefore(timer, priceElement);
         }
       });
+    },
+
+    initialize() {
+      console.log('Initializing Smart Cart with campaigns:', this.campaigns);
+
+      // Setup product timers
+      if (document.querySelector('.product.products-details-page')) {
+        console.log('On product page, setting up product timer');
+        this.setupProductTimer();
+        this.createStickyCart();
+
+        // Set up observer for dynamic content changes
+        const observer = new MutationObserver(() => {
+          if (!document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+            this.setupProductTimer();
+          }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+      } else {
+        console.log('On product list page, setting up product list timers');
+        this.setupProductListTimers();
+
+        // Set up observer for product list changes (pagination, filtering, etc.)
+        const observer = new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.type === 'childList' && mutation.target.classList.contains('products-grid')) {
+              this.setupProductListTimers();
+              break;
+            }
+          }
+        });
+
+        const productsGrid = document.querySelector('.products-grid');
+        if (productsGrid) {
+          observer.observe(productsGrid, { childList: true, subtree: true });
+        }
+      }
     }
   };
 
