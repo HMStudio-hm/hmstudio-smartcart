@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.2.4
+// src/scripts/smartCart.js v1.2.5
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
