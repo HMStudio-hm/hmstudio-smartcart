@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.1.3
+// src/scripts/smartCart.js v1.1.4
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -208,206 +208,52 @@
         });
         this.activeTimers.clear();
       }
-    
-      // Get current product ID - try multiple selectors
-      let productId;
+
+      // Get current product ID
       const productForm = document.querySelector('form[data-product-id]');
-      if (productForm) {
-        productId = productForm.getAttribute('data-product-id');
-      } else {
-        // Try alternative selectors
-        const wishlistBtn = document.querySelector('[data-wishlist-id]');
-        if (wishlistBtn) {
-          productId = wishlistBtn.getAttribute('data-wishlist-id');
-        }
-      }
-    
-      if (!productId) {
-        console.log('Product ID not found');
+      if (!productForm) {
+        console.log('Product form not found');
         return;
       }
-    
-      this.currentProductId = productId;
-    
+      
+      this.currentProductId = productForm.getAttribute('data-product-id');
+      
       // Find active campaign for this product
       const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
       if (!activeCampaign) {
         console.log('No active campaign found for product:', this.currentProductId);
         return;
       }
-    
+
       // Create timer
       const timer = this.createCountdownTimer(activeCampaign, this.currentProductId);
-    
-      // Try multiple insertion points based on the actual HTML structure
-      let inserted = false;
-      
-      // First try: Above product-formatted-price
-      const priceHeading = document.querySelector('.product-formatted-price.theme-text-primary');
-      if (priceHeading?.parentElement) {
-        priceHeading.parentElement.insertBefore(timer, priceHeading);
-        inserted = true;
-        console.log('Timer inserted above price heading');
+
+      // Insert timer at the specific location
+      const priceContainer = document.querySelector('h2.product-formatted-price.theme-text-primary');
+      if (priceContainer?.parentElement) {
+        priceContainer.parentElement.insertBefore(timer, priceContainer);
+        console.log('Timer inserted successfully');
+      } else {
+        console.log('Price container not found for timer insertion');
       }
-    
-      // Second try: Inside col-product-info
-      if (!inserted) {
-        const productInfoCol = document.querySelector('.col-product-info');
-        if (productInfoCol) {
-          const firstChild = productInfoCol.firstChild;
-          productInfoCol.insertBefore(timer, firstChild);
-          inserted = true;
-          console.log('Timer inserted in product info column');
-        }
-      }
-    
-      // Third try: Inside products-details section
-      if (!inserted) {
-        const productsDetails = document.querySelector('.products-details');
-        if (productsDetails) {
-          const targetSection = productsDetails.querySelector('section');
-          if (targetSection) {
-            targetSection.insertBefore(timer, targetSection.firstChild);
-            inserted = true;
-            console.log('Timer inserted in products details section');
-          }
-        }
-      }
-    
-      // Fourth try: Inside col-lg-6 col-product-info
-      if (!inserted) {
-        const productInfoDiv = document.querySelector('.col-lg-6.col-product-info');
-        if (productInfoDiv) {
-          const firstElement = productInfoDiv.firstElementChild;
-          productInfoDiv.insertBefore(timer, firstElement);
-          inserted = true;
-          console.log('Timer inserted in product info div');
-        }
-      }
-    
-      // Fifth try: Before the h1 title
-      if (!inserted) {
-        const titleElement = document.querySelector('h1');
-        if (titleElement?.parentElement) {
-          titleElement.parentElement.insertBefore(timer, titleElement);
-          inserted = true;
-          console.log('Timer inserted before title');
-        }
-      }
-    
-      if (!inserted) {
-        console.log('Could not find suitable location for timer');
-      }
-    },
-
-    setupProductListTimers() {
-      // Clear existing timers
-      this.activeTimers.forEach((interval, productId) => {
-        clearInterval(interval);
-        const timer = document.getElementById(`hmstudio-countdown-${productId}`);
-        if (timer) timer.remove();
-      });
-      this.activeTimers.clear();
-
-      // Find all product cards
-      const productCards = document.querySelectorAll('.product-item.position-relative');
-      console.log('Found product cards:', productCards.length);
-
-      productCards.forEach(card => {
-        const productId = card.querySelector('[data-wishlist-id]')?.getAttribute('data-wishlist-id');
-        if (!productId) {
-          console.log('No product ID found for card');
-          return;
-        }
-
-        const activeCampaign = this.findActiveCampaignForProduct(productId);
-        if (!activeCampaign) {
-          console.log('No active campaign for product:', productId);
-          return;
-        }
-
-        const timer = this.createCountdownTimer(activeCampaign, productId);
-        
-        // Try to insert timer in card
-        let inserted = false;
-
-        // First try: Above price
-        const priceElement = card.querySelector('.product-formatted-price');
-        if (priceElement?.parentElement) {
-          priceElement.parentElement.insertBefore(timer, priceElement);
-          inserted = true;
-          console.log('Timer inserted above price in card');
-        }
-
-        // Second try: Product info area
-        if (!inserted) {
-          const productInfo = card.querySelector('.product-info') || 
-                            card.querySelector('.product-content');
-          if (productInfo) {
-            productInfo.insertBefore(timer, productInfo.firstChild);
-            inserted = true;
-            console.log('Timer inserted in product info area');
-          }
-        }
-
-        if (!inserted) {
-          console.log('Could not find location for timer in product card');
-        }
-      });
     },
 
     initialize() {
       console.log('Initializing Smart Cart with campaigns:', this.campaigns);
-
-      const isProductPage = document.querySelector('.product.products-details-page') ||
-                           document.querySelector('.products-details-page') ||
-                           document.querySelector('[data-product-id]');
-
-      if (isProductPage) {
+      
+      if (document.querySelector('.product.products-details-page')) {
         console.log('On product page, setting up product timer');
         this.setupProductTimer();
         this.createStickyCart();
 
-        // Enhanced mutation observer
-        const observer = new MutationObserver((mutations) => {
-          for (const mutation of mutations) {
-            if (!document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-              console.log('Timer not found, re-adding...');
-              this.setupProductTimer();
-              break;
-            }
+        // Set up observer for dynamic content changes
+        const observer = new MutationObserver(() => {
+          if (!document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+            this.setupProductTimer();
           }
         });
 
-        observer.observe(document.body, { 
-          childList: true, 
-          subtree: true,
-          attributes: true 
-        });
-      } else {
-        console.log('On product list page, setting up product list timers');
-        this.setupProductListTimers();
-
-        // Set up observer for product list changes
-        const observer = new MutationObserver((mutations) => {
-          for (const mutation of mutations) {
-            if (mutation.type === 'childList') {
-              this.setupProductListTimers();
-              break;
-            }
-          }
-        });
-
-        const productsContainer = document.querySelector('.products-grid') || 
-                                document.querySelector('.products-list') ||
-                                document.querySelector('.products-container');
-        
-        if (productsContainer) {
-          observer.observe(productsContainer, { 
-            childList: true, 
-            subtree: true 
-          });
-        }
+        observer.observe(document.body, { childList: true, subtree: true });
       }
     }
   };
