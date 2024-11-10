@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.2.0
+// src/scripts/smartCart.js v1.2.1
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -213,9 +213,11 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     `;
 
-    const textElement = document.createElement('span');
-    textElement.textContent = campaign.timerSettings.text;
-    textElement.style.fontWeight = '500';
+const textElement = document.createElement('span');
+textElement.textContent = getCurrentLanguage() === 'ar' 
+  ? campaign.timerSettings.textAr 
+  : campaign.timerSettings.textEn;
+textElement.style.fontWeight = '500';
     
     const timeElement = document.createElement('div');
     timeElement.style.cssText = `
