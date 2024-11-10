@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.2.3
+// src/scripts/smartCart.js v1.2.4
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -15,24 +15,30 @@
     const scriptTag = document.currentScript;
     const scriptUrl = new URL(scriptTag.src);
     const campaignsData = scriptUrl.searchParams.get('campaigns');
-    console.log('Raw campaigns data:', campaignsData);
-
+    
     if (!campaignsData) {
-      console.log('No campaigns data found in URL');
-      return [];
+        console.log('No campaigns data found in URL');
+        return [];
     }
 
     try {
-      const decodedData = atob(campaignsData);
-      console.log('Decoded campaigns data:', decodedData);
-      const parsedData = JSON.parse(decodedData);
-      console.log('Parsed campaigns:', parsedData);
-      return parsedData;
+        const decodedData = atob(campaignsData);
+        const parsedData = JSON.parse(decodedData);
+        
+        // Decode the Arabic and English text
+        return parsedData.map(campaign => ({
+            ...campaign,
+            timerSettings: {
+                ...campaign.timerSettings,
+                textAr: decodeURIComponent(campaign.timerSettings.textAr || ''),
+                textEn: decodeURIComponent(campaign.timerSettings.textEn || '')
+            }
+        }));
     } catch (error) {
-      console.error('Error parsing campaigns data:', error);
-      return [];
+        console.error('Error parsing campaigns data:', error);
+        return [];
     }
-  }
+}
 
   function getCurrentLanguage() {
     return document.documentElement.lang || 'ar';
@@ -185,57 +191,66 @@
   },
 
   createCountdownTimer(campaign, productId) {
-    // Previous cleanup code remains the same...
+    // Remove existing timer if any
+    const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`);
+    if (existingTimer) {
+        existingTimer.remove();
+        if (this.activeTimers.has(productId)) {
+            clearInterval(this.activeTimers.get(productId));
+            this.activeTimers.delete(productId);
+        }
+    }
 
-    const isArabic = getCurrentLanguage() === 'ar';
     const container = document.createElement('div');
-    container.id = `hmstudio-countdown-${productId}`;
-    container.style.cssText = `
-        background: ${campaign.timerSettings.backgroundColor};
-        color: ${campaign.timerSettings.textColor};
-        padding: 12px 15px;
-        margin: 15px 0;
-        border-radius: 8px;
-        text-align: center;
-        direction: ${isArabic ? 'rtl' : 'ltr'};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        font-size: 14px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        font-family: ${isArabic ? 'var(--font-arabic, system-ui)' : 'inherit'};
-    `;
+  container.id = `hmstudio-countdown-${productId}`;
+  container.style.cssText = `
+    background: ${campaign.timerSettings.backgroundColor};
+    color: ${campaign.timerSettings.textColor};
+    padding: 12px 15px;
+    margin: 15px 0;
+    border-radius: 8px;
+    text-align: center;
+    direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  `;
 
-    const textElement = document.createElement('span');
-    const timerText = isArabic ? campaign.timerSettings.textAr : campaign.timerSettings.textEn;
-    textElement.textContent = timerText;
-    textElement.style.fontWeight = '500';
+  const textElement = document.createElement('span');
+  // Use the appropriate text based on language
+  const timerText = getCurrentLanguage() === 'ar' ? 
+    campaign.timerSettings.textAr : 
+    campaign.timerSettings.textEn;
+  textElement.textContent = timerText;
+  textElement.style.fontWeight = '500';
     
     const timeElement = document.createElement('div');
     timeElement.style.cssText = `
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
         font-weight: bold;
         padding: 4px 8px;
         border-radius: 4px;
         background: rgba(255, 255, 255, 0.15);
-        direction: ${isArabic ? 'ltr' : 'ltr'}; /* Keep timer numbers LTR even in Arabic */
     `;
 
-    // For Arabic, flip the order of elements
-    if (isArabic) {
-        container.appendChild(timeElement);
-        container.appendChild(textElement);
-    } else {
-        container.appendChild(textElement);
-        container.appendChild(timeElement);
-    }
+    container.appendChild(textElement);
+    container.appendChild(timeElement);
 
-    const endDate = campaign.endDate?.seconds ? 
-        new Date(campaign.endDate.seconds * 1000) : 
-        new Date(campaign.endDate);
+    // Convert endDate timestamp to Date object
+    let endDate;
+    try {
+        endDate = campaign.endDate?._seconds ? 
+            new Date(campaign.endDate._seconds * 1000) :
+            new Date(campaign.endDate.seconds * 1000);
+    } catch (error) {
+        console.error('Error parsing end date:', error);
+        return container;
+    }
 
     const updateTimer = () => {
         const now = new Date();
@@ -248,30 +263,86 @@
             return;
         }
 
-        // Calculate time units
-        const months = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 30.44));
+        // Calculate time components
+        const months = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 30.44)); // Approximate months
         const days = Math.floor((timeDiff % (1000 * 60 * 60 * 24 * 30.44)) / (1000 * 60 * 60 * 24));
         const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
 
-        // Clear timeElement
-        timeElement.innerHTML = '';
+        // Create time units array
+        let timeUnits = [];
 
-        // Create array of time components
-        const timeUnits = [];
-        if (months > 0) timeUnits.push(`${months.toString().padStart(2, '0')}${isArabic ? 'ش' : 'M'}`);
-        if (days > 0 || months > 0) timeUnits.push(`${days.toString().padStart(2, '0')}${isArabic ? 'ي' : 'D'}`);
+        // Add months if applicable
+        if (months > 0) {
+            timeUnits.push({
+                value: months,
+                label: getCurrentLanguage() === 'ar' ? 'شهر' : 'M'
+            });
+        }
+
+        // Add days if applicable
+        if (days > 0 || months > 0) {
+            timeUnits.push({
+                value: days,
+                label: getCurrentLanguage() === 'ar' ? 'يوم' : 'D'
+            });
+        }
+
+        // Always add hours, minutes, and seconds
         timeUnits.push(
-            `${hours.toString().padStart(2, '0')}${isArabic ? 'س' : 'H'}`,
-            `${minutes.toString().padStart(2, '0')}${isArabic ? 'د' : 'M'}`,
-            `${seconds.toString().padStart(2, '0')}${isArabic ? 'ث' : 'S'}`
+            {
+                value: hours,
+                label: getCurrentLanguage() === 'ar' ? 'س' : 'H'
+            },
+            {
+                value: minutes,
+                label: getCurrentLanguage() === 'ar' ? 'د' : 'M'
+            },
+            {
+                value: seconds,
+                label: getCurrentLanguage() === 'ar' ? 'ث' : 'S'
+            }
         );
 
-        // Join with proper separator
-        timeElement.textContent = timeUnits.join(' : ');
+        // Clear existing content
+        timeElement.innerHTML = '';
+
+        // Create elements for each time unit
+        timeUnits.forEach((unit, index) => {
+            const unitContainer = document.createElement('div');
+            unitContainer.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 2px;
+            `;
+
+            const valueSpan = document.createElement('span');
+            valueSpan.textContent = String(unit.value).padStart(2, '0');
+            valueSpan.style.minWidth = '20px';
+
+            const labelSpan = document.createElement('span');
+            labelSpan.textContent = unit.label;
+            labelSpan.style.fontSize = '12px';
+            labelSpan.style.opacity = '0.8';
+
+            unitContainer.appendChild(valueSpan);
+            unitContainer.appendChild(labelSpan);
+
+            if (index < timeUnits.length - 1) {
+                unitContainer.style.marginRight = '8px';
+                
+                const separator = document.createElement('span');
+                separator.textContent = ':';
+                separator.style.marginLeft = '8px';
+                unitContainer.appendChild(separator);
+            }
+
+            timeElement.appendChild(unitContainer);
+        });
     };
 
+    // Initial update and start interval
     updateTimer();
     const timerInterval = setInterval(updateTimer, 1000);
     this.activeTimers.set(productId, timerInterval);
