@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.1.7
+// src/scripts/smartCart.js v1.1.8
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -126,12 +126,14 @@
       console.log('Available campaigns:', this.campaigns);
       
       const now = new Date();
-      const activeCampaign = this.campaigns.find(campaign => {
-          console.log('Checking campaign:', campaign);
+      console.log('Current time:', now);
   
+      const activeCampaign = this.campaigns.find(campaign => {
+          console.log('\nChecking campaign:', campaign);
+          
           // Check if campaign has products array
           if (!campaign.products || !Array.isArray(campaign.products)) {
-              console.log('Campaign has no products array:', campaign);
+              console.log('Campaign has no products array');
               return false;
           }
   
@@ -139,48 +141,55 @@
           const hasProduct = campaign.products.some(p => p.id === productId);
           console.log('Product in campaign:', hasProduct);
   
-          // Convert timestamps to dates
+          // Convert Unix timestamps to dates
           let startDate, endDate;
           try {
-              // Handle both timestamp and seconds formats
-              startDate = campaign.startDate?._seconds ? 
-                  new Date(campaign.startDate._seconds * 1000) :
-                  new Date(campaign.startDate.seconds * 1000);
-                  
-              endDate = campaign.endDate?._seconds ? 
-                  new Date(campaign.endDate._seconds * 1000) :
-                  new Date(campaign.endDate.seconds * 1000);
-  
-              console.log('Parsed dates:', {
-                  startDate: startDate.toISOString(),
-                  endDate: endDate.toISOString(),
-                  now: now.toISOString()
+              startDate = new Date(Number(campaign.startDate.seconds) * 1000);
+              endDate = new Date(Number(campaign.endDate.seconds) * 1000);
+              
+              console.log('Campaign dates:', {
+                  start: startDate.toLocaleString(),
+                  end: endDate.toLocaleString(),
+                  now: now.toLocaleString()
               });
           } catch (error) {
-              console.error('Error parsing dates:', error);
+              console.error('Error converting dates:', error);
               return false;
           }
   
           // Check if dates are valid
-          if (!(startDate instanceof Date && !isNaN(startDate)) || 
-              !(endDate instanceof Date && !isNaN(endDate))) {
+          if (!startDate || !endDate || isNaN(startDate) || isNaN(endDate)) {
               console.log('Invalid dates');
               return false;
           }
   
-          const isInDateRange = now >= startDate && now <= endDate;
-          console.log('In date range:', isInDateRange);
+          // Remove time from dates for comparison
+          const startWithoutTime = new Date(startDate.setHours(0, 0, 0, 0));
+          const endWithoutTime = new Date(endDate.setHours(23, 59, 59, 999));
+          const nowWithoutTime = new Date(now.setHours(0, 0, 0, 0));
+  
+          const isInDateRange = (nowWithoutTime >= startWithoutTime && nowWithoutTime <= endWithoutTime);
+          console.log('Date comparison:', {
+              start: startWithoutTime.toLocaleString(),
+              end: endWithoutTime.toLocaleString(),
+              now: nowWithoutTime.toLocaleString(),
+              isInRange: isInDateRange
+          });
   
           const isActive = campaign.status === 'active';
-          console.log('Campaign active:', isActive);
+          console.log('Campaign status:', isActive);
   
-          const isValidCampaign = hasProduct && isInDateRange && isActive;
-          console.log('Campaign valid for product:', isValidCampaign);
+          const isValid = hasProduct && isInDateRange && isActive;
+          console.log('Campaign valid:', isValid, {
+              hasProduct,
+              isInDateRange,
+              isActive
+          });
   
-          return isValidCampaign;
+          return isValid;
       });
   
-      console.log('Found active campaign:', activeCampaign);
+      console.log('Final campaign found:', activeCampaign);
       return activeCampaign;
   },
 
