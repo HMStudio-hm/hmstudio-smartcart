@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.1.8
+// src/scripts/smartCart.js v1.1.9
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -126,14 +126,12 @@
       console.log('Available campaigns:', this.campaigns);
       
       const now = new Date();
-      console.log('Current time:', now);
-  
       const activeCampaign = this.campaigns.find(campaign => {
-          console.log('\nChecking campaign:', campaign);
-          
+          console.log('Checking campaign:', campaign);
+  
           // Check if campaign has products array
           if (!campaign.products || !Array.isArray(campaign.products)) {
-              console.log('Campaign has no products array');
+              console.log('Campaign has no products array:', campaign);
               return false;
           }
   
@@ -141,71 +139,65 @@
           const hasProduct = campaign.products.some(p => p.id === productId);
           console.log('Product in campaign:', hasProduct);
   
-          // Convert Unix timestamps to dates
+          // Convert timestamps to dates
           let startDate, endDate;
           try {
-              startDate = new Date(Number(campaign.startDate.seconds) * 1000);
-              endDate = new Date(Number(campaign.endDate.seconds) * 1000);
-              
-              console.log('Campaign dates:', {
-                  start: startDate.toLocaleString(),
-                  end: endDate.toLocaleString(),
-                  now: now.toLocaleString()
+              // Handle both timestamp and seconds formats
+              startDate = campaign.startDate?._seconds ? 
+                  new Date(campaign.startDate._seconds * 1000) :
+                  new Date(campaign.startDate.seconds * 1000);
+                  
+              endDate = campaign.endDate?._seconds ? 
+                  new Date(campaign.endDate._seconds * 1000) :
+                  new Date(campaign.endDate.seconds * 1000);
+  
+              console.log('Parsed dates:', {
+                  startDate: startDate.toISOString(),
+                  endDate: endDate.toISOString(),
+                  now: now.toISOString()
               });
           } catch (error) {
-              console.error('Error converting dates:', error);
+              console.error('Error parsing dates:', error);
               return false;
           }
   
           // Check if dates are valid
-          if (!startDate || !endDate || isNaN(startDate) || isNaN(endDate)) {
+          if (!(startDate instanceof Date && !isNaN(startDate)) || 
+              !(endDate instanceof Date && !isNaN(endDate))) {
               console.log('Invalid dates');
               return false;
           }
   
-          // Remove time from dates for comparison
-          const startWithoutTime = new Date(startDate.setHours(0, 0, 0, 0));
-          const endWithoutTime = new Date(endDate.setHours(23, 59, 59, 999));
-          const nowWithoutTime = new Date(now.setHours(0, 0, 0, 0));
-  
-          const isInDateRange = (nowWithoutTime >= startWithoutTime && nowWithoutTime <= endWithoutTime);
-          console.log('Date comparison:', {
-              start: startWithoutTime.toLocaleString(),
-              end: endWithoutTime.toLocaleString(),
-              now: nowWithoutTime.toLocaleString(),
-              isInRange: isInDateRange
-          });
+          const isInDateRange = now >= startDate && now <= endDate;
+          console.log('In date range:', isInDateRange);
   
           const isActive = campaign.status === 'active';
-          console.log('Campaign status:', isActive);
+          console.log('Campaign active:', isActive);
   
-          const isValid = hasProduct && isInDateRange && isActive;
-          console.log('Campaign valid:', isValid, {
-              hasProduct,
-              isInDateRange,
-              isActive
-          });
+          const isValidCampaign = hasProduct && isInDateRange && isActive;
+          console.log('Campaign valid for product:', isValidCampaign);
   
-          return isValid;
+          return isValidCampaign;
       });
   
-      console.log('Final campaign found:', activeCampaign);
+      console.log('Found active campaign:', activeCampaign);
       return activeCampaign;
   },
 
-    createCountdownTimer(campaign, productId) {
-      const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`);
-      if (existingTimer) {
+  createCountdownTimer(campaign, productId) {
+    // Remove existing timer if any
+    const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`);
+    if (existingTimer) {
         existingTimer.remove();
         if (this.activeTimers.has(productId)) {
-          clearInterval(this.activeTimers.get(productId));
-          this.activeTimers.delete(productId);
+            clearInterval(this.activeTimers.get(productId));
+            this.activeTimers.delete(productId);
         }
-      }
+    }
 
-      const container = document.createElement('div');
-      container.id = `hmstudio-countdown-${productId}`;
-      container.style.cssText = `
+    const container = document.createElement('div');
+    container.id = `hmstudio-countdown-${productId}`;
+    container.style.cssText = `
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
         padding: 12px 15px;
@@ -218,50 +210,80 @@
         justify-content: center;
         gap: 8px;
         font-size: 14px;
-      `;
+    `;
 
-      const textElement = document.createElement('span');
-      textElement.textContent = campaign.timerSettings.text;
-      
-      const timeElement = document.createElement('span');
-      timeElement.style.cssText = `
+    const textElement = document.createElement('span');
+    textElement.textContent = campaign.timerSettings.text;
+    
+    const timeElement = document.createElement('span');
+    timeElement.style.cssText = `
         font-weight: bold;
         padding: 2px 6px;
         border-radius: 3px;
         background: rgba(255, 255, 255, 0.1);
-      `;
+    `;
 
-      container.appendChild(textElement);
-      container.appendChild(timeElement);
+    container.appendChild(textElement);
+    container.appendChild(timeElement);
 
-      const endDate = campaign.endDate?.seconds ? 
-        new Date(campaign.endDate.seconds * 1000) : 
-        new Date(campaign.endDate);
+    // Convert endDate timestamp to Date object
+    let endDate;
+    try {
+        // Handle both timestamp formats
+        endDate = campaign.endDate?._seconds ? 
+            new Date(campaign.endDate._seconds * 1000) :
+            new Date(campaign.endDate.seconds * 1000);
 
-      const updateTimer = () => {
+        console.log('Timer end date:', endDate.toISOString()); // Debug log
+    } catch (error) {
+        console.error('Error parsing end date:', error);
+        return container;
+    }
+
+    const updateTimer = () => {
         const now = new Date();
         const timeDiff = endDate - now;
 
         if (timeDiff <= 0) {
-          container.remove();
-          clearInterval(timerInterval);
-          this.activeTimers.delete(productId);
-          return;
+            container.remove();
+            clearInterval(timerInterval);
+            this.activeTimers.delete(productId);
+            return;
         }
 
+        // Calculate time components
         const hours = Math.floor(timeDiff / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
 
-        timeElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      };
+        // Format time components
+        const formattedHours = String(hours).padStart(2, '0');
+        const formattedMinutes = String(minutes).padStart(2, '0');
+        const formattedSeconds = String(seconds).padStart(2, '0');
 
-      updateTimer();
-      const timerInterval = setInterval(updateTimer, 1000);
-      this.activeTimers.set(productId, timerInterval);
+        // Update timer display
+        timeElement.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+        
+        // Debug log
+        console.log('Timer update:', {
+            now: now.toISOString(),
+            endDate: endDate.toISOString(),
+            timeDiff,
+            hours,
+            minutes,
+            seconds
+        });
+    };
 
-      return container;
-    },
+    // Initial update
+    updateTimer();
+    
+    // Start interval
+    const timerInterval = setInterval(updateTimer, 1000);
+    this.activeTimers.set(productId, timerInterval);
+
+    return container;
+},
 
     setupProductTimer() {
       console.log('Setting up product timer...');
