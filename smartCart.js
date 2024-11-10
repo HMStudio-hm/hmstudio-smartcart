@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.2.1
+// src/scripts/smartCart.js v1.2.2
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -196,28 +196,30 @@
     }
 
     const container = document.createElement('div');
-    container.id = `hmstudio-countdown-${productId}`;
-    container.style.cssText = `
-        background: ${campaign.timerSettings.backgroundColor};
-        color: ${campaign.timerSettings.textColor};
-        padding: 12px 15px;
-        margin: 15px 0;
-        border-radius: 8px;
-        text-align: center;
-        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        font-size: 14px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    `;
+  container.id = `hmstudio-countdown-${productId}`;
+  container.style.cssText = `
+    background: ${campaign.timerSettings.backgroundColor};
+    color: ${campaign.timerSettings.textColor};
+    padding: 12px 15px;
+    margin: 15px 0;
+    border-radius: 8px;
+    text-align: center;
+    direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  `;
 
-const textElement = document.createElement('span');
-textElement.textContent = getCurrentLanguage() === 'ar' 
-  ? campaign.timerSettings.textAr 
-  : campaign.timerSettings.textEn;
-textElement.style.fontWeight = '500';
+  const textElement = document.createElement('span');
+  // Use the appropriate text based on language
+  const timerText = getCurrentLanguage() === 'ar' ? 
+    campaign.timerSettings.textAr : 
+    campaign.timerSettings.textEn;
+  textElement.textContent = timerText;
+  textElement.style.fontWeight = '500';
     
     const timeElement = document.createElement('div');
     timeElement.style.cssText = `
