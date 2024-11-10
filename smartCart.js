@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.1.2
+// src/scripts/smartCart.js v1.1.3
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -208,7 +208,7 @@
         });
         this.activeTimers.clear();
       }
-
+    
       // Get current product ID - try multiple selectors
       let productId;
       const productForm = document.querySelector('form[data-product-id]');
@@ -221,57 +221,80 @@
           productId = wishlistBtn.getAttribute('data-wishlist-id');
         }
       }
-
+    
       if (!productId) {
         console.log('Product ID not found');
         return;
       }
-
+    
       this.currentProductId = productId;
-
+    
       // Find active campaign for this product
       const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
       if (!activeCampaign) {
         console.log('No active campaign found for product:', this.currentProductId);
         return;
       }
-
+    
       // Create timer
       const timer = this.createCountdownTimer(activeCampaign, this.currentProductId);
-
-      // Try multiple insertion points
+    
+      // Try multiple insertion points based on the actual HTML structure
       let inserted = false;
       
-      // First try: Above price
-      const priceContainer = document.querySelector('.product-formatted-price.theme-text-primary')?.parentElement;
-      if (priceContainer?.parentElement) {
-        priceContainer.parentElement.insertBefore(timer, priceContainer);
+      // First try: Above product-formatted-price
+      const priceHeading = document.querySelector('.product-formatted-price.theme-text-primary');
+      if (priceHeading?.parentElement) {
+        priceHeading.parentElement.insertBefore(timer, priceHeading);
         inserted = true;
-        console.log('Timer inserted above price');
+        console.log('Timer inserted above price heading');
       }
-
-      // Second try: Product details section
+    
+      // Second try: Inside col-product-info
       if (!inserted) {
-        const productDetails = document.querySelector('.products-details-page .product-details');
-        if (productDetails) {
-          productDetails.insertBefore(timer, productDetails.firstChild);
+        const productInfoCol = document.querySelector('.col-product-info');
+        if (productInfoCol) {
+          const firstChild = productInfoCol.firstChild;
+          productInfoCol.insertBefore(timer, firstChild);
           inserted = true;
-          console.log('Timer inserted in product details');
+          console.log('Timer inserted in product info column');
         }
       }
-
-      // Third try: Any product info container
+    
+      // Third try: Inside products-details section
       if (!inserted) {
-        const productInfo = document.querySelector('.product-info') || 
-                           document.querySelector('.product-content') ||
-                           document.querySelector('.product-description');
-        if (productInfo) {
-          productInfo.insertBefore(timer, productInfo.firstChild);
-          inserted = true;
-          console.log('Timer inserted in product info');
+        const productsDetails = document.querySelector('.products-details');
+        if (productsDetails) {
+          const targetSection = productsDetails.querySelector('section');
+          if (targetSection) {
+            targetSection.insertBefore(timer, targetSection.firstChild);
+            inserted = true;
+            console.log('Timer inserted in products details section');
+          }
         }
       }
-
+    
+      // Fourth try: Inside col-lg-6 col-product-info
+      if (!inserted) {
+        const productInfoDiv = document.querySelector('.col-lg-6.col-product-info');
+        if (productInfoDiv) {
+          const firstElement = productInfoDiv.firstElementChild;
+          productInfoDiv.insertBefore(timer, firstElement);
+          inserted = true;
+          console.log('Timer inserted in product info div');
+        }
+      }
+    
+      // Fifth try: Before the h1 title
+      if (!inserted) {
+        const titleElement = document.querySelector('h1');
+        if (titleElement?.parentElement) {
+          titleElement.parentElement.insertBefore(timer, titleElement);
+          inserted = true;
+          console.log('Timer inserted before title');
+        }
+      }
+    
       if (!inserted) {
         console.log('Could not find suitable location for timer');
       }
