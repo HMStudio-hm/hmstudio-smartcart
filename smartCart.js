@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.2.5
+// src/scripts/smartCart.js v1.2.6
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -61,7 +61,7 @@
       if (this.stickyCartElement) {
         this.stickyCartElement.remove();
       }
-
+    
       const container = document.createElement('div');
       container.id = 'hmstudio-sticky-cart';
       container.style.cssText = `
@@ -76,17 +76,113 @@
         display: none;
         direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
       `;
-
+    
       const wrapper = document.createElement('div');
       wrapper.style.cssText = `
         max-width: 1200px;
         margin: 0 auto;
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: space-between;
         gap: 15px;
       `;
-
+    
+      // Create quantity selector
+      const quantityWrapper = document.createElement('div');
+      quantityWrapper.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        padding: 4px;
+      `;
+    
+      const decreaseBtn = document.createElement('button');
+      decreaseBtn.textContent = '-';
+      decreaseBtn.style.cssText = `
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 1px solid #e5e5e5;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        user-select: none;
+      `;
+    
+      const quantityInput = document.createElement('input');
+      quantityInput.type = 'number';
+      quantityInput.min = '1';
+      quantityInput.value = '1';
+      quantityInput.style.cssText = `
+        width: 40px;
+        text-align: center;
+        border: none;
+        background: transparent;
+        font-size: 14px;
+        -moz-appearance: textfield;
+      `;
+      quantityInput.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        if (isNaN(value) || value < 1) {
+          e.target.value = '1';
+        }
+        // Update original quantity input if it exists
+        const originalQuantity = document.querySelector('input[name="quantity"]');
+        if (originalQuantity) {
+          originalQuantity.value = e.target.value;
+        }
+      });
+    
+      const increaseBtn = document.createElement('button');
+      increaseBtn.textContent = '+';
+      increaseBtn.style.cssText = `
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 1px solid #e5e5e5;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        user-select: none;
+      `;
+    
+      // Add event listeners for quantity buttons
+      decreaseBtn.addEventListener('click', () => {
+        const currentValue = parseInt(quantityInput.value);
+        if (currentValue > 1) {
+          quantityInput.value = currentValue - 1;
+          // Update original quantity input
+          const originalQuantity = document.querySelector('input[name="quantity"]');
+          if (originalQuantity) {
+            originalQuantity.value = quantityInput.value;
+          }
+        }
+      });
+    
+      increaseBtn.addEventListener('click', () => {
+        const currentValue = parseInt(quantityInput.value);
+        quantityInput.value = currentValue + 1;
+        // Update original quantity input
+        const originalQuantity = document.querySelector('input[name="quantity"]');
+        if (originalQuantity) {
+          originalQuantity.value = quantityInput.value;
+        }
+      });
+    
+      // Assemble quantity selector
+      quantityWrapper.appendChild(decreaseBtn);
+      quantityWrapper.appendChild(quantityInput);
+      quantityWrapper.appendChild(increaseBtn);
+    
+      // Add to cart button
       const addButton = document.createElement('button');
       addButton.textContent = getCurrentLanguage() === 'ar' ? 'أضف للسلة' : 'Add to Cart';
       addButton.style.cssText = `
@@ -101,29 +197,44 @@
         white-space: nowrap;
         transition: opacity 0.3s ease;
       `;
-
+    
       addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
       addButton.addEventListener('mouseout', () => addButton.style.opacity = '1');
       addButton.addEventListener('click', () => {
+        // Update original quantity input before clicking add to cart
+        const originalQuantity = document.querySelector('input[name="quantity"]');
+        if (originalQuantity) {
+          originalQuantity.value = quantityInput.value;
+        }
         const originalButton = document.querySelector('.btn.btn-add-to-cart');
         if (originalButton) {
           originalButton.click();
         }
       });
-
+    
+      wrapper.appendChild(quantityWrapper);
       wrapper.appendChild(addButton);
       container.appendChild(wrapper);
       document.body.appendChild(container);
-
+    
       this.stickyCartElement = container;
-
+    
+      // Show/hide on scroll
       window.addEventListener('scroll', () => {
         const originalButton = document.querySelector('.btn.btn-add-to-cart');
         if (!originalButton) return;
-
+    
         const buttonRect = originalButton.getBoundingClientRect();
         const isButtonVisible = buttonRect.top >= 0 && buttonRect.bottom <= window.innerHeight;
         container.style.display = !isButtonVisible ? 'block' : 'none';
+    
+        // Sync quantity with original input when sticky cart becomes visible
+        if (!isButtonVisible) {
+          const originalQuantity = document.querySelector('input[name="quantity"]');
+          if (originalQuantity) {
+            quantityInput.value = originalQuantity.value;
+          }
+        }
       });
     },
 
