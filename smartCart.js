@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.1.9
+// src/scripts/smartCart.js v1.2.0
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -201,26 +201,31 @@
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
         padding: 12px 15px;
-        margin-bottom: 15px;
-        border-radius: 4px;
+        margin: 15px 0;
+        border-radius: 8px;
         text-align: center;
         direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 12px;
         font-size: 14px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     `;
 
     const textElement = document.createElement('span');
     textElement.textContent = campaign.timerSettings.text;
+    textElement.style.fontWeight = '500';
     
-    const timeElement = document.createElement('span');
+    const timeElement = document.createElement('div');
     timeElement.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 8px;
         font-weight: bold;
-        padding: 2px 6px;
-        border-radius: 3px;
-        background: rgba(255, 255, 255, 0.1);
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.15);
     `;
 
     container.appendChild(textElement);
@@ -229,12 +234,9 @@
     // Convert endDate timestamp to Date object
     let endDate;
     try {
-        // Handle both timestamp formats
         endDate = campaign.endDate?._seconds ? 
             new Date(campaign.endDate._seconds * 1000) :
             new Date(campaign.endDate.seconds * 1000);
-
-        console.log('Timer end date:', endDate.toISOString()); // Debug log
     } catch (error) {
         console.error('Error parsing end date:', error);
         return container;
@@ -252,33 +254,86 @@
         }
 
         // Calculate time components
-        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const months = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 30.44)); // Approximate months
+        const days = Math.floor((timeDiff % (1000 * 60 * 60 * 24 * 30.44)) / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
 
-        // Format time components
-        const formattedHours = String(hours).padStart(2, '0');
-        const formattedMinutes = String(minutes).padStart(2, '0');
-        const formattedSeconds = String(seconds).padStart(2, '0');
+        // Create time units array
+        let timeUnits = [];
 
-        // Update timer display
-        timeElement.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-        
-        // Debug log
-        console.log('Timer update:', {
-            now: now.toISOString(),
-            endDate: endDate.toISOString(),
-            timeDiff,
-            hours,
-            minutes,
-            seconds
+        // Add months if applicable
+        if (months > 0) {
+            timeUnits.push({
+                value: months,
+                label: getCurrentLanguage() === 'ar' ? 'شهر' : 'M'
+            });
+        }
+
+        // Add days if applicable
+        if (days > 0 || months > 0) {
+            timeUnits.push({
+                value: days,
+                label: getCurrentLanguage() === 'ar' ? 'يوم' : 'D'
+            });
+        }
+
+        // Always add hours, minutes, and seconds
+        timeUnits.push(
+            {
+                value: hours,
+                label: getCurrentLanguage() === 'ar' ? 'س' : 'H'
+            },
+            {
+                value: minutes,
+                label: getCurrentLanguage() === 'ar' ? 'د' : 'M'
+            },
+            {
+                value: seconds,
+                label: getCurrentLanguage() === 'ar' ? 'ث' : 'S'
+            }
+        );
+
+        // Clear existing content
+        timeElement.innerHTML = '';
+
+        // Create elements for each time unit
+        timeUnits.forEach((unit, index) => {
+            const unitContainer = document.createElement('div');
+            unitContainer.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 2px;
+            `;
+
+            const valueSpan = document.createElement('span');
+            valueSpan.textContent = String(unit.value).padStart(2, '0');
+            valueSpan.style.minWidth = '20px';
+
+            const labelSpan = document.createElement('span');
+            labelSpan.textContent = unit.label;
+            labelSpan.style.fontSize = '12px';
+            labelSpan.style.opacity = '0.8';
+
+            unitContainer.appendChild(valueSpan);
+            unitContainer.appendChild(labelSpan);
+
+            if (index < timeUnits.length - 1) {
+                unitContainer.style.marginRight = '8px';
+                
+                const separator = document.createElement('span');
+                separator.textContent = ':';
+                separator.style.marginLeft = '8px';
+                unitContainer.appendChild(separator);
+            }
+
+            timeElement.appendChild(unitContainer);
         });
     };
 
-    // Initial update
+    // Initial update and start interval
     updateTimer();
-    
-    // Start interval
     const timerInterval = setInterval(updateTimer, 1000);
     this.activeTimers.set(productId, timerInterval);
 
