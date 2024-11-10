@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.1.6
+// src/scripts/smartCart.js v1.1.7
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -127,47 +127,62 @@
       
       const now = new Date();
       const activeCampaign = this.campaigns.find(campaign => {
-        console.log('Checking campaign:', campaign);
-        
-        if (!campaign.products || !Array.isArray(campaign.products)) {
-          console.log('Campaign has no products array:', campaign);
-          return false;
-        }
-
-        console.log('Campaign product IDs:', campaign.products.map(p => p.id));
-        
-        const hasProduct = campaign.products.some(p => p.id === productId);
-        console.log('Product in campaign:', hasProduct);
-
-        const startDate = campaign.startDate?.seconds ? 
-          new Date(campaign.startDate.seconds * 1000) : 
-          new Date(campaign.startDate);
-          
-        const endDate = campaign.endDate?.seconds ? 
-          new Date(campaign.endDate.seconds * 1000) : 
-          new Date(campaign.endDate);
-
-        console.log('Campaign dates:', {
-          start: startDate,
-          end: endDate,
-          now: now
-        });
-
-        const isInDateRange = now >= startDate && now <= endDate;
-        console.log('In date range:', isInDateRange);
-
-        const isActive = campaign.status === 'active';
-        console.log('Campaign active:', isActive);
-
-        const isValidCampaign = hasProduct && isInDateRange && isActive;
-        console.log('Campaign valid for product:', isValidCampaign);
-
-        return isValidCampaign;
+          console.log('Checking campaign:', campaign);
+  
+          // Check if campaign has products array
+          if (!campaign.products || !Array.isArray(campaign.products)) {
+              console.log('Campaign has no products array:', campaign);
+              return false;
+          }
+  
+          // Check if product is in campaign
+          const hasProduct = campaign.products.some(p => p.id === productId);
+          console.log('Product in campaign:', hasProduct);
+  
+          // Convert timestamps to dates
+          let startDate, endDate;
+          try {
+              // Handle both timestamp and seconds formats
+              startDate = campaign.startDate?._seconds ? 
+                  new Date(campaign.startDate._seconds * 1000) :
+                  new Date(campaign.startDate.seconds * 1000);
+                  
+              endDate = campaign.endDate?._seconds ? 
+                  new Date(campaign.endDate._seconds * 1000) :
+                  new Date(campaign.endDate.seconds * 1000);
+  
+              console.log('Parsed dates:', {
+                  startDate: startDate.toISOString(),
+                  endDate: endDate.toISOString(),
+                  now: now.toISOString()
+              });
+          } catch (error) {
+              console.error('Error parsing dates:', error);
+              return false;
+          }
+  
+          // Check if dates are valid
+          if (!(startDate instanceof Date && !isNaN(startDate)) || 
+              !(endDate instanceof Date && !isNaN(endDate))) {
+              console.log('Invalid dates');
+              return false;
+          }
+  
+          const isInDateRange = now >= startDate && now <= endDate;
+          console.log('In date range:', isInDateRange);
+  
+          const isActive = campaign.status === 'active';
+          console.log('Campaign active:', isActive);
+  
+          const isValidCampaign = hasProduct && isInDateRange && isActive;
+          console.log('Campaign valid for product:', isValidCampaign);
+  
+          return isValidCampaign;
       });
-
+  
       console.log('Found active campaign:', activeCampaign);
       return activeCampaign;
-    },
+  },
 
     createCountdownTimer(campaign, productId) {
       const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`);
