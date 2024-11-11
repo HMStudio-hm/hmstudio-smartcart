@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.3.3
+// src/scripts/smartCart.js v1.3.4
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -264,70 +264,26 @@
       console.log('Finding campaign for product:', productId);
       console.log('Available campaigns:', this.campaigns);
       
-      const now = new Date();
       const activeCampaign = this.campaigns.find(campaign => {
-          console.log('Checking campaign:', campaign);
+        console.log('Checking campaign:', campaign);
   
-          // Skip if no products array
-          if (!campaign.products || !Array.isArray(campaign.products)) {
-              console.log('Campaign has no products array:', campaign);
-              return false;
-          }
+        if (!campaign.products || !Array.isArray(campaign.products)) {
+          console.log('Campaign has no products array:', campaign);
+          return false;
+        }
   
-          // Check if product is in campaign
-          const hasProduct = campaign.products.some(p => p.id === productId);
-          if (!hasProduct) {
-              console.log('Product not in campaign:', productId);
-              return false;
-          }
+        const hasProduct = campaign.products.some(p => p.id === productId);
+        console.log('Product in campaign:', hasProduct);
   
-          // Convert dates to UTC for comparison
-          let startDate, endDate;
-          try {
-              // Handle both timestamp formats
-              if (campaign.startDate?._seconds) {
-                  startDate = new Date(campaign.startDate._seconds * 1000);
-              } else if (campaign.startDate?.seconds) {
-                  startDate = new Date(campaign.startDate.seconds * 1000);
-              } else {
-                  startDate = new Date(campaign.startDate);
-              }
+        const isActive = campaign.status === 'active';
+        console.log('Campaign active:', isActive);
   
-              if (campaign.endDate?._seconds) {
-                  endDate = new Date(campaign.endDate._seconds * 1000);
-              } else if (campaign.endDate?.seconds) {
-                  endDate = new Date(campaign.endDate.seconds * 1000);
-              } else {
-                  endDate = new Date(campaign.endDate);
-              }
-  
-              console.log('Campaign timing:', {
-                  status: campaign.status,
-                  startDate: startDate.toISOString(),
-                  endDate: endDate.toISOString(),
-                  now: now.toISOString()
-              });
-  
-              // Check if campaign is active and within date range
-              const isInDateRange = now >= startDate && now <= endDate;
-              if (campaign.status === 'active' && isInDateRange) {
-                  console.log('Found active campaign in date range');
-                  return true;
-              } else if (campaign.status === 'scheduled' && now >= startDate) {
-                  console.log('Scheduled campaign ready to activate');
-                  return true;
-              }
-  
-              return false;
-          } catch (error) {
-              console.error('Error checking campaign dates:', error);
-              return false;
-          }
+        return hasProduct && isActive;
       });
   
       console.log('Found active campaign:', activeCampaign);
       return activeCampaign;
-  },
+    },
 
   createCountdownTimer(campaign, productId) {
     // Remove existing timer if any
@@ -489,182 +445,112 @@
     return container;
 },
 
-setupProductTimer() {
-  console.log('Setting up product timer...');
+    setupProductTimer() {
+      console.log('Setting up product timer...');
 
-  // Clear existing timer check interval
-  if (this._timerCheckInterval) {
-      clearInterval(this._timerCheckInterval);
-  }
-
-  if (this.activeTimers.size > 0) {
-      console.log('Clearing existing timers');
-      this.activeTimers.forEach((interval, productId) => {
+      if (this.activeTimers.size > 0) {
+        console.log('Clearing existing timers');
+        this.activeTimers.forEach((interval, productId) => {
           clearInterval(interval);
           const timer = document.getElementById(`hmstudio-countdown-${productId}`);
           if (timer) timer.remove();
-      });
-      this.activeTimers.clear();
-  }
+        });
+        this.activeTimers.clear();
+      }
 
-  let productId;
-  const wishlistBtn = document.querySelector('[data-wishlist-id]');
-  if (wishlistBtn) {
-      productId = wishlistBtn.getAttribute('data-wishlist-id');
-      console.log('Found product ID from wishlist button:', productId);
-  }
+      let productId;
+      const wishlistBtn = document.querySelector('[data-wishlist-id]');
+      if (wishlistBtn) {
+        productId = wishlistBtn.getAttribute('data-wishlist-id');
+        console.log('Found product ID from wishlist button:', productId);
+      }
 
-  if (!productId) {
-      const productForm = document.querySelector('form[data-product-id]');
-      if (productForm) {
+      if (!productId) {
+        const productForm = document.querySelector('form[data-product-id]');
+        if (productForm) {
           productId = productForm.getAttribute('data-product-id');
           console.log('Found product ID from form:', productId);
+        }
       }
-  }
 
-  if (!productId) {
-      console.log('No product ID found on page');
-      return;
-  }
-
-  this.currentProductId = productId;
-
-  // Initial check for active campaign
-  const activeCampaign = this.findActiveCampaignForProduct(productId);
-  if (activeCampaign) {
-      console.log('Found initial active campaign:', activeCampaign);
-      this.createCountdownTimer(activeCampaign, productId);
-  }
-
-  // Set up periodic timer check
-  this._timerCheckInterval = setInterval(() => {
-      if (this.currentProductId) {
-          const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
-          if (activeCampaign) {
-              this.createCountdownTimer(activeCampaign, this.currentProductId);
-          } else {
-              // Remove timer if no active campaign
-              const existingTimer = document.getElementById(`hmstudio-countdown-${this.currentProductId}`);
-              if (existingTimer) {
-                  existingTimer.remove();
-              }
-          }
+      if (!productId) {
+        console.log('No product ID found on page');
+        return;
       }
-  }, 10000); // Check every 10 seconds
 
-  // Set up timer position check
-  let inserted = false;
-  const insertTimer = (campaign) => {
-      const timer = this.createCountdownTimer(campaign, productId);
-      
+      this.currentProductId = productId;
+
+      const activeCampaign = this.findActiveCampaignForProduct(productId);
+      console.log('Active campaign found:', activeCampaign);
+
+      if (!activeCampaign) {
+        console.log('No active campaign found for product:', productId);
+        return;
+      }
+
+      console.log('Creating timer for campaign:', activeCampaign);
+      const timer = this.createCountdownTimer(activeCampaign, productId);
+
+      let inserted = false;
+
       const priceSelectors = [
-          'h2.product-formatted-price.theme-text-primary',
-          '.product-formatted-price',
-          '.product-formatted-price.theme-text-primary',
-          '.product-price',
-          'h2.theme-text-primary',
-          '.theme-text-primary'
+        'h2.product-formatted-price.theme-text-primary',
+        '.product-formatted-price',
+        '.product-formatted-price.theme-text-primary',
+        '.product-price',
+        'h2.theme-text-primary',
+        '.theme-text-primary'
       ];
 
       for (const selector of priceSelectors) {
-          const priceContainer = document.querySelector(selector);
-          console.log(`Trying selector "${selector}":`, !!priceContainer);
-          
-          if (priceContainer?.parentElement) {
-              priceContainer.parentElement.insertBefore(timer, priceContainer);
-              console.log('Timer inserted successfully at', selector);
-              inserted = true;
-              break;
-          }
+        const priceContainer = document.querySelector(selector);
+        console.log(`Trying selector "${selector}":`, !!priceContainer);
+        
+        if (priceContainer?.parentElement) {
+          priceContainer.parentElement.insertBefore(timer, priceContainer);
+          console.log('Timer inserted successfully at', selector);
+          inserted = true;
+          break;
+        }
       }
 
       if (!inserted) {
-          console.log('Trying alternative locations');
-          const productDetails = document.querySelector('.products-details');
-          if (productDetails) {
-              productDetails.insertBefore(timer, productDetails.firstChild);
-              console.log('Timer inserted in product details');
-              inserted = true;
-          }
+        console.log('Could not find price container, trying alternative locations');
+        const productDetails = document.querySelector('.products-details');
+        if (productDetails) {
+          productDetails.insertBefore(timer, productDetails.firstChild);
+          console.log('Timer inserted in product details');
+          inserted = true;
+        }
       }
 
       if (!inserted) {
-          console.log('Failed to insert timer');
+        console.log('Failed to insert timer');
       }
+    },
+
+    initialize() {
+      console.log('Initializing Smart Cart with campaigns:', this.campaigns);
+      
+      if (document.querySelector('.product.products-details-page')) {
+        console.log('On product page, setting up product timer');
+        this.setupProductTimer();
+        this.createStickyCart();
+
+        const observer = new MutationObserver(() => {
+          if (!document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+            this.setupProductTimer();
+          }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
+    }
   };
 
-  // Initial insert attempt
-  if (activeCampaign) {
-      insertTimer(activeCampaign);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => SmartCart.initialize());
+  } else {
+    SmartCart.initialize();
   }
-
-  // Observer for dynamic content changes
-  const observer = new MutationObserver((mutations) => {
-      if (!document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-          const currentCampaign = this.findActiveCampaignForProduct(this.currentProductId);
-          if (currentCampaign && !inserted) {
-              insertTimer(currentCampaign);
-          }
-      }
-  });
-
-  observer.observe(document.body, { 
-      childList: true, 
-      subtree: true,
-      attributes: true, 
-      characterData: true 
-  });
-
-  // Cleanup function for the observer
-  const cleanup = () => {
-      observer.disconnect();
-      if (this._timerCheckInterval) {
-          clearInterval(this._timerCheckInterval);
-      }
-  };
-
-  // Add cleanup to window unload event
-  window.addEventListener('unload', cleanup);
-},
-
-initialize() {
-  console.log('Initializing Smart Cart with campaigns:', this.campaigns);
-  
-  if (document.querySelector('.product.products-details-page')) {
-      console.log('On product page, setting up product timer');
-      this.setupProductTimer();
-      this.createStickyCart();
-
-      // Handle dynamic page updates
-      const observer = new MutationObserver((mutations) => {
-          for (const mutation of mutations) {
-              if (mutation.type === 'childList' && 
-                  !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-                  this.setupProductTimer();
-              }
-          }
-      });
-
-      observer.observe(document.body, { 
-          childList: true, 
-          subtree: true 
-      });
-
-      // Clean up on page changes
-      window.addEventListener('unload', () => {
-          observer.disconnect();
-          if (this._timerCheckInterval) {
-              clearInterval(this._timerCheckInterval);
-          }
-      });
-  }
-}
-};
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => SmartCart.initialize());
-} else {
-  SmartCart.initialize();
-}
 })();
