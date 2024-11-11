@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.2.8
+// src/scripts/smartCart.js v1.2.9
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -87,6 +87,22 @@
         gap: 15px;
       `;
     
+      // Function to get and update quantity
+      const getOriginalQuantitySelect = () => document.querySelector('select#product-quantity');
+      const updateQuantity = (value) => {
+        // Update sticky cart quantity input
+        quantityInput.value = value;
+    
+        // Find and update original quantity select
+        const originalSelect = getOriginalQuantitySelect();
+        if (originalSelect) {
+          originalSelect.value = value;
+          // Trigger change event
+          const event = new Event('change', { bubbles: true });
+          originalSelect.dispatchEvent(event);
+        }
+      };
+    
       // Create quantity selector
       const quantityWrapper = document.createElement('div');
       quantityWrapper.style.cssText = `
@@ -117,6 +133,7 @@
       const quantityInput = document.createElement('input');
       quantityInput.type = 'number';
       quantityInput.min = '1';
+      quantityInput.max = '10'; // Match the select options
       quantityInput.value = '1';
       quantityInput.style.cssText = `
         width: 40px;
@@ -145,21 +162,6 @@
         user-select: none;
       `;
     
-      // Function to update quantity in both places
-      const updateQuantity = (value) => {
-        // Update sticky cart quantity
-        quantityInput.value = value;
-    
-        // Find and update original quantity input
-        const originalQuantityInput = document.querySelector('input[name="quantity"]');
-        if (originalQuantityInput) {
-          originalQuantityInput.value = value;
-          // Trigger change event on original input
-          const event = new Event('change', { bubbles: true });
-          originalQuantityInput.dispatchEvent(event);
-        }
-      };
-    
       // Add event listeners
       decreaseBtn.addEventListener('click', () => {
         const currentValue = parseInt(quantityInput.value);
@@ -170,13 +172,17 @@
     
       increaseBtn.addEventListener('click', () => {
         const currentValue = parseInt(quantityInput.value);
-        updateQuantity(currentValue + 1);
+        if (currentValue < 10) { // Match max quantity in select
+          updateQuantity(currentValue + 1);
+        }
       });
     
       quantityInput.addEventListener('change', (e) => {
         let value = parseInt(e.target.value);
         if (isNaN(value) || value < 1) {
           value = 1;
+        } else if (value > 10) {
+          value = 10;
         }
         updateQuantity(value);
       });
@@ -201,13 +207,26 @@
       addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
       addButton.addEventListener('mouseout', () => addButton.style.opacity = '1');
       addButton.addEventListener('click', () => {
+        // Update quantity before clicking
+        const originalSelect = getOriginalQuantitySelect();
+        if (originalSelect) {
+          originalSelect.value = quantityInput.value;
+          // Trigger change event
+          const event = new Event('change', { bubbles: true });
+          originalSelect.dispatchEvent(event);
+        }
+    
+        // Find and click original button
         const originalButton = document.querySelector('.btn.btn-add-to-cart');
         if (originalButton) {
-          originalButton.click();
+          // Add a small delay to ensure the quantity update is processed
+          setTimeout(() => {
+            originalButton.click();
+          }, 100);
         }
       });
     
-      // Assemble quantity selector
+      // Assemble quantity selector and add to container
       quantityWrapper.appendChild(decreaseBtn);
       quantityWrapper.appendChild(quantityInput);
       quantityWrapper.appendChild(increaseBtn);
@@ -222,7 +241,7 @@
       // Show/hide on scroll and sync quantity
       window.addEventListener('scroll', () => {
         const originalButton = document.querySelector('.btn.btn-add-to-cart');
-        const originalQuantityInput = document.querySelector('input[name="quantity"]');
+        const originalSelect = getOriginalQuantitySelect();
         
         if (!originalButton) return;
     
@@ -232,8 +251,8 @@
         if (!isButtonVisible) {
           container.style.display = 'block';
           // Sync quantity when sticky cart becomes visible
-          if (originalQuantityInput) {
-            quantityInput.value = originalQuantityInput.value;
+          if (originalSelect) {
+            quantityInput.value = originalSelect.value;
           }
         } else {
           container.style.display = 'none';
