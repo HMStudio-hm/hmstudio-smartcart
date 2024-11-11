@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.3.5
+// src/scripts/smartCart.js v1.3.6
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -25,13 +25,21 @@
         const decodedData = atob(campaignsData);
         const parsedData = JSON.parse(decodedData);
         
-        // Decode the Arabic and English text
+        // Ensure the timer settings are properly structured
         return parsedData.map(campaign => ({
             ...campaign,
             timerSettings: {
                 ...campaign.timerSettings,
                 textAr: decodeURIComponent(campaign.timerSettings.textAr || ''),
-                textEn: decodeURIComponent(campaign.timerSettings.textEn || '')
+                textEn: decodeURIComponent(campaign.timerSettings.textEn || ''),
+                duration: {
+                    days: parseInt(campaign.timerSettings.duration?.days || 0),
+                    hours: parseInt(campaign.timerSettings.duration?.hours || 0),
+                    minutes: parseInt(campaign.timerSettings.duration?.minutes || 0),
+                    seconds: parseInt(campaign.timerSettings.duration?.seconds || 0)
+                },
+                backgroundColor: campaign.timerSettings.backgroundColor || '#000000',
+                textColor: campaign.timerSettings.textColor || '#ffffff'
             }
         }));
     } catch (error) {
@@ -58,9 +66,205 @@
     activeTimers: new Map(),
 
     createStickyCart() {
-      // ... existing createStickyCart code remains the same ...
-    },
+      if (this.stickyCartElement) {
+        this.stickyCartElement.remove();
+      }
 
+      const container = document.createElement('div');
+      container.id = 'hmstudio-sticky-cart';
+      container.style.cssText = `
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+        padding: 12px 20px;
+        z-index: 999999;
+        display: none;
+        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+      `;
+
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+      `;
+
+      // Function to get and update quantity
+      const getOriginalQuantitySelect = () => document.querySelector('select#product-quantity');
+      const updateQuantity = (value) => {
+        // Update sticky cart quantity input
+        quantityInput.value = value;
+
+        // Find and update original quantity select
+        const originalSelect = getOriginalQuantitySelect();
+        if (originalSelect) {
+          originalSelect.value = value;
+          // Trigger change event
+          const event = new Event('change', { bubbles: true });
+          originalSelect.dispatchEvent(event);
+        }
+      };
+
+      // Create quantity selector
+      const quantityWrapper = document.createElement('div');
+      quantityWrapper.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        padding: 4px;
+      `;
+
+      const decreaseBtn = document.createElement('button');
+      decreaseBtn.textContent = '-';
+      decreaseBtn.style.cssText = `
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 1px solid #e5e5e5;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        user-select: none;
+      `;
+
+      const quantityInput = document.createElement('input');
+      quantityInput.type = 'number';
+      quantityInput.min = '1';
+      quantityInput.max = '10';
+      quantityInput.value = '1';
+      quantityInput.style.cssText = `
+        width: 40px;
+        text-align: center;
+        border: none;
+        background: transparent;
+        font-size: 14px;
+        -moz-appearance: textfield;
+        -webkit-appearance: none;
+        margin: 0 5px;
+      `;
+
+      const increaseBtn = document.createElement('button');
+      increaseBtn.textContent = '+';
+      increaseBtn.style.cssText = `
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 1px solid #e5e5e5;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        user-select: none;
+      `;
+
+      // Add event listeners
+      decreaseBtn.addEventListener('click', () => {
+        const currentValue = parseInt(quantityInput.value);
+        if (currentValue > 1) {
+          updateQuantity(currentValue - 1);
+        }
+      });
+
+      increaseBtn.addEventListener('click', () => {
+        const currentValue = parseInt(quantityInput.value);
+        if (currentValue < 10) {
+          updateQuantity(currentValue + 1);
+        }
+      });
+
+      quantityInput.addEventListener('change', (e) => {
+        let value = parseInt(e.target.value);
+        if (isNaN(value) || value < 1) {
+          value = 1;
+        } else if (value > 10) {
+          value = 10;
+        }
+        updateQuantity(value);
+      });
+
+      // Add to cart button
+      const addButton = document.createElement('button');
+      addButton.textContent = getCurrentLanguage() === 'ar' ? 'أضف للسلة' : 'Add to Cart';
+      addButton.style.cssText = `
+        background-color: var(--theme-primary, #00b286);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0 30px;
+        height: 40px;
+        font-weight: 500;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: opacity 0.3s ease;
+        flex-grow: 1;
+      `;
+
+      addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
+      addButton.addEventListener('mouseout', () => addButton.style.opacity = '1');
+      addButton.addEventListener('click', () => {
+        // Update quantity before clicking
+        const originalSelect = getOriginalQuantitySelect();
+        if (originalSelect) {
+          originalSelect.value = quantityInput.value;
+          // Trigger change event
+          const event = new Event('change', { bubbles: true });
+          originalSelect.dispatchEvent(event);
+        }
+
+        // Find and click original button
+        const originalButton = document.querySelector('.btn.btn-add-to-cart');
+        if (originalButton) {
+          setTimeout(() => {
+            originalButton.click();
+          }, 100);
+        }
+      });
+
+      // Assemble quantity selector and add to container
+      quantityWrapper.appendChild(decreaseBtn);
+      quantityWrapper.appendChild(quantityInput);
+      quantityWrapper.appendChild(increaseBtn);
+
+      wrapper.appendChild(quantityWrapper);
+      wrapper.appendChild(addButton);
+      container.appendChild(wrapper);
+      document.body.appendChild(container);
+
+      this.stickyCartElement = container;
+
+      // Show/hide on scroll
+      window.addEventListener('scroll', () => {
+        const originalButton = document.querySelector('.btn.btn-add-to-cart');
+        const originalSelect = getOriginalQuantitySelect();
+        
+        if (!originalButton) return;
+
+        const buttonRect = originalButton.getBoundingClientRect();
+        const isButtonVisible = buttonRect.top >= 0 && buttonRect.bottom <= window.innerHeight;
+        
+        if (!isButtonVisible) {
+          container.style.display = 'block';
+          if (originalSelect) {
+            quantityInput.value = originalSelect.value;
+          }
+        } else {
+          container.style.display = 'none';
+        }
+      });
+    },
     findActiveCampaignForProduct(productId) {
       console.log('Finding campaign for product:', productId);
       console.log('Available campaigns:', this.campaigns);
@@ -136,7 +340,7 @@
       container.appendChild(textElement);
       container.appendChild(timeElement);
 
-      // Calculate total duration in milliseconds based on campaign settings
+      // Calculate total duration in milliseconds
       const totalDuration = (
         (campaign.timerSettings.duration.days * 24 * 60 * 60 * 1000) +
         (campaign.timerSettings.duration.hours * 60 * 60 * 1000) +
