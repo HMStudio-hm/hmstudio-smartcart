@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.2.9
+// src/scripts/smartCart.js v1.3.0
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -278,45 +278,74 @@
           const hasProduct = campaign.products.some(p => p.id === productId);
           console.log('Product in campaign:', hasProduct);
   
-          // Convert timestamps to dates
+          // Convert timestamps to dates with timezone consideration
           let startDate, endDate;
           try {
-              // Handle both timestamp and seconds formats
-              startDate = campaign.startDate?._seconds ? 
-                  new Date(campaign.startDate._seconds * 1000) :
-                  new Date(campaign.startDate.seconds * 1000);
-                  
-              endDate = campaign.endDate?._seconds ? 
-                  new Date(campaign.endDate._seconds * 1000) :
-                  new Date(campaign.endDate.seconds * 1000);
+              // Handle both timestamp formats and ensure proper timezone handling
+              if (campaign.startDate?._seconds) {
+                  startDate = new Date(campaign.startDate._seconds * 1000);
+              } else if (campaign.startDate?.seconds) {
+                  startDate = new Date(campaign.startDate.seconds * 1000);
+              } else {
+                  startDate = new Date(campaign.startDate);
+              }
   
-              console.log('Parsed dates:', {
+              if (campaign.endDate?._seconds) {
+                  endDate = new Date(campaign.endDate._seconds * 1000);
+              } else if (campaign.endDate?.seconds) {
+                  endDate = new Date(campaign.endDate.seconds * 1000);
+              } else {
+                  endDate = new Date(campaign.endDate);
+              }
+  
+              // Normalize dates to UTC to avoid timezone issues
+              startDate = new Date(Date.UTC(
+                  startDate.getUTCFullYear(),
+                  startDate.getUTCMonth(),
+                  startDate.getUTCDate(),
+                  startDate.getUTCHours(),
+                  startDate.getUTCMinutes(),
+                  startDate.getUTCSeconds()
+              ));
+  
+              endDate = new Date(Date.UTC(
+                  endDate.getUTCFullYear(),
+                  endDate.getUTCMonth(),
+                  endDate.getUTCDate(),
+                  endDate.getUTCHours(),
+                  endDate.getUTCMinutes(),
+                  endDate.getUTCSeconds()
+              ));
+  
+              const nowUTC = new Date(Date.UTC(
+                  now.getUTCFullYear(),
+                  now.getUTCMonth(),
+                  now.getUTCDate(),
+                  now.getUTCHours(),
+                  now.getUTCMinutes(),
+                  now.getUTCSeconds()
+              ));
+  
+              console.log('Parsed dates (UTC):', {
                   startDate: startDate.toISOString(),
                   endDate: endDate.toISOString(),
-                  now: now.toISOString()
+                  now: nowUTC.toISOString()
               });
+  
+              // Check if now is within the campaign period
+              const isInDateRange = nowUTC >= startDate && nowUTC <= endDate;
+              console.log('In date range:', isInDateRange);
+  
+              const isActive = campaign.status === 'active' || 
+                             (campaign.status === 'scheduled' && isInDateRange);
+              console.log('Campaign active status:', isActive);
+  
+              return hasProduct && isInDateRange && isActive;
+  
           } catch (error) {
-              console.error('Error parsing dates:', error);
+              console.error('Error parsing campaign dates:', error);
               return false;
           }
-  
-          // Check if dates are valid
-          if (!(startDate instanceof Date && !isNaN(startDate)) || 
-              !(endDate instanceof Date && !isNaN(endDate))) {
-              console.log('Invalid dates');
-              return false;
-          }
-  
-          const isInDateRange = now >= startDate && now <= endDate;
-          console.log('In date range:', isInDateRange);
-  
-          const isActive = campaign.status === 'active';
-          console.log('Campaign active:', isActive);
-  
-          const isValidCampaign = hasProduct && isInDateRange && isActive;
-          console.log('Campaign valid for product:', isValidCampaign);
-  
-          return isValidCampaign;
       });
   
       console.log('Found active campaign:', activeCampaign);
