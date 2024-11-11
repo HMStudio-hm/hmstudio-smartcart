@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.3.9
+// src/scripts/smartCart.js v1.4.0
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -23,38 +23,46 @@
 
     try {
         const decodedData = atob(campaignsData);
-        console.log('Decoded campaign data:', decodedData);
+        console.log('Raw decoded data:', decodedData);
         const parsedData = JSON.parse(decodedData);
-        console.log('Parsed campaign data:', parsedData);
+        console.log('Initial parsed data:', parsedData);
         
         // Ensure the timer settings are properly structured
         const processedCampaigns = parsedData.map(campaign => {
-            console.log('Processing campaign:', campaign);
-            console.log('Timer settings:', campaign.timerSettings);
+            console.log('Processing campaign raw data:', campaign);
+            console.log('Raw timer settings:', campaign.timerSettings);
+            
+            // Extract duration values directly
+            const duration = campaign.timerSettings?.duration || {};
+            console.log('Raw duration:', duration);
+            
             return {
                 ...campaign,
                 timerSettings: {
-                    ...campaign.timerSettings,
-                    textAr: decodeURIComponent(campaign.timerSettings.textAr || ''),
-                    textEn: decodeURIComponent(campaign.timerSettings.textEn || ''),
+                    textAr: decodeURIComponent(campaign.timerSettings?.textAr || ''),
+                    textEn: decodeURIComponent(campaign.timerSettings?.textEn || ''),
                     duration: {
-                        days: parseInt(campaign.timerSettings.duration?.days || 0),
-                        hours: parseInt(campaign.timerSettings.duration?.hours || 0),
-                        minutes: parseInt(campaign.timerSettings.duration?.minutes || 0),
-                        seconds: parseInt(campaign.timerSettings.duration?.seconds || 0)
+                        days: Number(duration.days || 0),
+                        hours: Number(duration.hours || 0),
+                        minutes: Number(duration.minutes || 0),
+                        seconds: Number(duration.seconds || 0)
                     },
-                    backgroundColor: campaign.timerSettings.backgroundColor || '#000000',
-                    textColor: campaign.timerSettings.textColor || '#ffffff'
+                    backgroundColor: campaign.timerSettings?.backgroundColor || '#000000',
+                    textColor: campaign.timerSettings?.textColor || '#ffffff'
                 }
             };
         });
-        console.log('Processed campaigns:', processedCampaigns);
+
+        console.log('Final processed campaigns:', processedCampaigns);
+        console.log('Final duration values:', processedCampaigns.map(c => c.timerSettings.duration));
         return processedCampaigns;
     } catch (error) {
         console.error('Error parsing campaigns data:', error);
+        console.error('Error details:', error.message);
+        console.error('Campaign string:', campaignsData);
         return [];
     }
-  }
+}
 
   function getCurrentLanguage() {
     return document.documentElement.lang || 'ar';
