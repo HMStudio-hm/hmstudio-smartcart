@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.3.2
+// src/scripts/smartCart.js v1.3.3
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -264,23 +264,11 @@
       console.log('Finding campaign for product:', productId);
       console.log('Available campaigns:', this.campaigns);
       
-      // Get current time in UTC
       const now = new Date();
-      const utcNow = new Date(Date.UTC(
-          now.getUTCFullYear(),
-          now.getUTCMonth(),
-          now.getUTCDate(),
-          now.getUTCHours(),
-          now.getUTCMinutes(),
-          now.getUTCSeconds()
-      ));
-  
-      console.log('Current UTC time:', utcNow.toISOString());
-  
       const activeCampaign = this.campaigns.find(campaign => {
           console.log('Checking campaign:', campaign);
   
-          // Check if campaign has products array and correct status
+          // Skip if no products array
           if (!campaign.products || !Array.isArray(campaign.products)) {
               console.log('Campaign has no products array:', campaign);
               return false;
@@ -288,10 +276,12 @@
   
           // Check if product is in campaign
           const hasProduct = campaign.products.some(p => p.id === productId);
-          console.log('Product in campaign:', hasProduct);
-          if (!hasProduct) return false;
+          if (!hasProduct) {
+              console.log('Product not in campaign:', productId);
+              return false;
+          }
   
-          // Convert campaign dates to UTC
+          // Convert dates to UTC for comparison
           let startDate, endDate;
           try {
               // Handle both timestamp formats
@@ -311,41 +301,24 @@
                   endDate = new Date(campaign.endDate);
               }
   
-              // Convert to UTC
-              startDate = new Date(Date.UTC(
-                  startDate.getUTCFullYear(),
-                  startDate.getUTCMonth(),
-                  startDate.getUTCDate(),
-                  startDate.getUTCHours(),
-                  startDate.getUTCMinutes(),
-                  startDate.getUTCSeconds()
-              ));
-  
-              endDate = new Date(Date.UTC(
-                  endDate.getUTCFullYear(),
-                  endDate.getUTCMonth(),
-                  endDate.getUTCDate(),
-                  endDate.getUTCHours(),
-                  endDate.getUTCMinutes(),
-                  endDate.getUTCSeconds()
-              ));
-  
               console.log('Campaign timing:', {
                   status: campaign.status,
                   startDate: startDate.toISOString(),
                   endDate: endDate.toISOString(),
-                  currentTime: utcNow.toISOString()
+                  now: now.toISOString()
               });
   
-              // Check if campaign should be active
-              const isInDateRange = utcNow >= startDate && utcNow <= endDate;
-              console.log('Is in date range:', isInDateRange);
+              // Check if campaign is active and within date range
+              const isInDateRange = now >= startDate && now <= endDate;
+              if (campaign.status === 'active' && isInDateRange) {
+                  console.log('Found active campaign in date range');
+                  return true;
+              } else if (campaign.status === 'scheduled' && now >= startDate) {
+                  console.log('Scheduled campaign ready to activate');
+                  return true;
+              }
   
-              const isActive = campaign.status === 'active' || 
-                             (campaign.status === 'scheduled' && isInDateRange);
-              console.log('Is campaign active:', isActive);
-  
-              return isInDateRange && (campaign.status === 'active' || campaign.status === 'scheduled');
+              return false;
           } catch (error) {
               console.error('Error checking campaign dates:', error);
               return false;
