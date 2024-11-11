@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.3.7
+// src/scripts/smartCart.js v1.3.8
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -327,15 +327,16 @@
       textElement.style.fontWeight = '500';
         
       const timeElement = document.createElement('div');
-      timeElement.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: bold;
-        padding: 4px 8px;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.15);
-      `;
+timeElement.style.cssText = `
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-weight: bold;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+`;
 
       container.appendChild(textElement);
       container.appendChild(timeElement);
@@ -414,34 +415,46 @@
             gap: 2px;
           `;
 
+          // Value (numbers)
           const valueSpan = document.createElement('span');
           valueSpan.textContent = String(unit.value).padStart(2, '0');
-          valueSpan.style.minWidth = '20px';
+          valueSpan.style.cssText = `
+            display: inline-block;
+            min-width: 25px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+          `;
 
+          // Label (D, H, M, S)
           const labelSpan = document.createElement('span');
           labelSpan.textContent = unit.label;
-          labelSpan.style.fontSize = '12px';
-          labelSpan.style.opacity = '0.8';
+          labelSpan.style.cssText = `
+            font-size: 12px;
+            opacity: 0.8;
+          `;
 
           unitContainer.appendChild(valueSpan);
           unitContainer.appendChild(labelSpan);
 
+          timeElement.appendChild(unitContainer);
+
+          // Add separator if not last unit
           if (index < timeUnits.length - 1) {
-            unitContainer.style.marginRight = '8px';
-            
             const separator = document.createElement('span');
             separator.textContent = ':';
-            separator.style.marginLeft = '8px';
-            unitContainer.appendChild(separator);
+            separator.style.cssText = `
+              margin: 0 2px;
+              opacity: 0.8;
+            `;
+            timeElement.appendChild(separator);
           }
-
-          timeElement.appendChild(unitContainer);
         });
       };
 
       // Initial update and start interval
       updateTimer();
-      timerInterval = setInterval(updateTimer, 1000); // Assign to timerInterval here
+      timerInterval = setInterval(updateTimer, 1000);
       this.activeTimers.set(productId, timerInterval);
 
       return container;
