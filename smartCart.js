@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.3.6
+// src/scripts/smartCart.js v1.3.7
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -351,6 +351,8 @@
       const startTime = Date.now();
       const endTime = startTime + totalDuration;
 
+      let timerInterval; // Declare timerInterval here
+
       const updateTimer = () => {
         const now = Date.now();
         const timeDiff = endTime - now;
@@ -439,7 +441,7 @@
 
       // Initial update and start interval
       updateTimer();
-      const timerInterval = setInterval(updateTimer, 1000);
+      timerInterval = setInterval(updateTimer, 1000); // Assign to timerInterval here
       this.activeTimers.set(productId, timerInterval);
 
       return container;
