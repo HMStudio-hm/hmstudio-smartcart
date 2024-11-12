@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.4.8
+// src/scripts/smartCart.js v1.4.9
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -414,34 +414,37 @@
 
         let timeDiff = timer.endTime - now;
 
-        if (timeDiff <= 0 && timer.campaign.timerSettings?.autoRestart) {
-          console.log('Auto-restarting timer for:', id);
-          
-          // Calculate duration in milliseconds
-          const duration = 
-            (timer.campaign.duration.days * 24 * 60 * 60 * 1000) +
-            (timer.campaign.duration.hours * 60 * 60 * 1000) +
-            (timer.campaign.duration.minutes * 60 * 1000) +
-            (timer.campaign.duration.seconds * 1000);
+        if (timeDiff <= 0) {
+          // Check if timer should auto-restart
+          if (timer.campaign.timerSettings?.autoRestart) {
+            console.log('Auto-restarting timer for:', id);
+            
+            // Calculate duration in milliseconds
+            const duration = 
+              (timer.campaign.duration.days * 24 * 60 * 60 * 1000) +
+              (timer.campaign.duration.hours * 60 * 60 * 1000) +
+              (timer.campaign.duration.minutes * 60 * 1000) +
+              (timer.campaign.duration.seconds * 1000);
 
-          // Calculate how many full cycles have passed
-          const cycles = Math.floor(Math.abs(timeDiff) / duration) + 1;
-          
-          // Set new end time
-          timer.endTime = new Date(timer.endTime.getTime() + (duration * cycles));
-          console.log('Timer restarted, new end time:', timer.endTime);
-          
-          // Recalculate time difference
-          timeDiff = timer.endTime - now;
-        } else if (timeDiff <= 0) {
-          // Remove timer if auto-restart is disabled
-          const elementId = id.startsWith('card-') ? 
-            `hmstudio-card-countdown-${id.replace('card-', '')}` :
-            `hmstudio-countdown-${id}`;
-          const element = document.getElementById(elementId);
-          if (element) element.remove();
-          this.activeTimers.delete(id);
-          return;
+            // Calculate how many full cycles have passed
+            const cycles = Math.floor(Math.abs(timeDiff) / duration) + 1;
+            
+            // Set new end time by adding required cycles
+            timer.endTime = new Date(timer.endTime.getTime() + (duration * cycles));
+            console.log('Timer restarted, new end time:', timer.endTime);
+            
+            // Recalculate time difference with new end time
+            timeDiff = timer.endTime - now;
+          } else {
+            // Remove timer if auto-restart is disabled
+            const elementId = id.startsWith('card-') ? 
+              `hmstudio-card-countdown-${id.replace('card-', '')}` :
+              `hmstudio-countdown-${id}`;
+            const element = document.getElementById(elementId);
+            if (element) element.remove();
+            this.activeTimers.delete(id);
+            return;
+          }
         }
 
         // Rest of timer display logic
