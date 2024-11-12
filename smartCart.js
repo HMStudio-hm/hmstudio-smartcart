@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.5.2
+// src/scripts/smartCart.js v1.5.3
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -386,21 +386,85 @@
         width: 100%;
       `;
 
+      // Create timer element with initial content
       const timeElement = document.createElement('div');
       timeElement.style.cssText = `
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: ${isMobile() ? '2px' : '4px'};
+        gap: 4px;
+        width: 100%;
       `;
+
+      // Add initial timer display
+      const now = new Date();
+      const endTime = campaign.endTime?._seconds ? 
+        new Date(campaign.endTime._seconds * 1000) :
+        new Date(campaign.endTime.seconds * 1000);
+      
+      const timeDiff = endTime - now;
+      
+      if (timeDiff > 0) {
+        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+        let timeUnits = [];
+
+        if (days > 0) {
+          timeUnits.push({
+            value: days,
+            label: getCurrentLanguage() === 'ar' ? 'ي' : 'd'
+          });
+        }
+
+        if (hours > 0 || days > 0) {
+          timeUnits.push({
+            value: hours,
+            label: getCurrentLanguage() === 'ar' ? 'س' : 'h'
+          });
+        }
+
+        if (minutes > 0 || hours > 0 || days > 0) {
+          timeUnits.push({
+            value: minutes,
+            label: getCurrentLanguage() === 'ar' ? 'د' : 'm'
+          });
+        }
+
+        timeUnits.push({
+          value: seconds,
+          label: getCurrentLanguage() === 'ar' ? 'ث' : 's'
+        });
+
+        let initialHTML = '';
+        timeUnits.forEach((unit, index) => {
+          initialHTML += `
+            <div style="
+              display: inline-flex;
+              align-items: center;
+              gap: 2px;
+            ">
+              <span style="
+                font-weight: bold;
+                min-width: 16px;
+                text-align: center;
+              ">${String(unit.value).padStart(2, '0')}</span>
+              <small style="opacity: 0.8;">${unit.label}</small>
+              ${index < timeUnits.length - 1 ? '<span style="margin: 0 4px;">:</span>' : ''}
+            </div>
+          `;
+        });
+
+        timeElement.innerHTML = initialHTML;
+      }
 
       container.appendChild(timeElement);
 
       this.activeTimers.set(`card-${productId}`, {
         element: timeElement,
-        endTime: campaign.endTime?._seconds ? 
-          new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000),
+        endTime: endTime,
         campaign: {
           ...campaign,
           timerSettings: {
