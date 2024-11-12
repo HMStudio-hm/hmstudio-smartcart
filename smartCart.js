@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.4.4
+// src/scripts/smartCart.js v1.4.5
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -355,9 +355,10 @@
       container.style.cssText = `
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
-        padding: ${isMobile() ? '6px' : '8px'};
-        margin: ${isMobile() ? '6px 0' : '8px 0'};
-        border-radius: 4px;
+        padding: 4px;
+        margin-top: 30px !important;
+        border-bottom-right-radius: 8px;
+        border-bottom-left-radius: 8px;
         text-align: center;
         direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
         display: flex;
