@@ -1,6 +1,7 @@
 // src/scripts/smartCart.js v1.4.8
 // HMStudio Smart Cart with Campaign Support
 
+
 (function() {
   console.log('Smart Cart script initialized');
 
