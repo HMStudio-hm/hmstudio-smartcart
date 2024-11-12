@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.5.3
+// src/scripts/smartCart.js v1.5.4
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -364,16 +364,16 @@
           clearInterval(this.activeTimers.get(`card-${productId}`));
           this.activeTimers.delete(`card-${productId}`);
         }
-        return existingTimer;
+        existingTimer.remove();
       }
-
+    
       const container = document.createElement('div');
       container.id = `hmstudio-card-countdown-${productId}`;
       container.style.cssText = `
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
         padding: 4px;
-        margin-top: 30px !important;
+        margin-top: -4px;
         border-bottom-right-radius: 8px;
         border-bottom-left-radius: 8px;
         text-align: center;
@@ -384,93 +384,28 @@
         gap: 4px;
         font-size: ${isMobile() ? '11px' : '13px'};
         width: 100%;
+        position: relative;
+        z-index: 10;
       `;
-
-      // Create timer element with initial content
+    
       const timeElement = document.createElement('div');
       timeElement.style.cssText = `
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 4px;
-        width: 100%;
+        gap: ${isMobile() ? '2px' : '4px'};
       `;
-
-      // Add initial timer display
-      const now = new Date();
-      const endTime = campaign.endTime?._seconds ? 
-        new Date(campaign.endTime._seconds * 1000) :
-        new Date(campaign.endTime.seconds * 1000);
-      
-      const timeDiff = endTime - now;
-      
-      if (timeDiff > 0) {
-        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-
-        let timeUnits = [];
-
-        if (days > 0) {
-          timeUnits.push({
-            value: days,
-            label: getCurrentLanguage() === 'ar' ? 'ي' : 'd'
-          });
-        }
-
-        if (hours > 0 || days > 0) {
-          timeUnits.push({
-            value: hours,
-            label: getCurrentLanguage() === 'ar' ? 'س' : 'h'
-          });
-        }
-
-        if (minutes > 0 || hours > 0 || days > 0) {
-          timeUnits.push({
-            value: minutes,
-            label: getCurrentLanguage() === 'ar' ? 'د' : 'm'
-          });
-        }
-
-        timeUnits.push({
-          value: seconds,
-          label: getCurrentLanguage() === 'ar' ? 'ث' : 's'
-        });
-
-        let initialHTML = '';
-        timeUnits.forEach((unit, index) => {
-          initialHTML += `
-            <div style="
-              display: inline-flex;
-              align-items: center;
-              gap: 2px;
-            ">
-              <span style="
-                font-weight: bold;
-                min-width: 16px;
-                text-align: center;
-              ">${String(unit.value).padStart(2, '0')}</span>
-              <small style="opacity: 0.8;">${unit.label}</small>
-              ${index < timeUnits.length - 1 ? '<span style="margin: 0 4px;">:</span>' : ''}
-            </div>
-          `;
-        });
-
-        timeElement.innerHTML = initialHTML;
-      }
-
+    
       container.appendChild(timeElement);
-
+    
+      // Store complete campaign data
       this.activeTimers.set(`card-${productId}`, {
         element: timeElement,
-        endTime: endTime,
+        endTime: campaign.endTime?._seconds ? 
+          new Date(campaign.endTime._seconds * 1000) :
+          new Date(campaign.endTime.seconds * 1000),
         campaign: {
           ...campaign,
-          timerSettings: {
-            ...campaign.timerSettings,
-            autoRestart: campaign.timerSettings?.autoRestart || false
-          },
           duration: campaign.duration || {
             days: 0,
             hours: 0,
@@ -479,7 +414,7 @@
           }
         }
       });
-
+    
       return container;
     },
     updateAllTimers() {
@@ -523,7 +458,7 @@
           }
         }
 
-        // Calculate time components
+        // Rest of timer display logic
         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
@@ -558,80 +493,62 @@
         });
 
         let html = '';
-        
-        // Generate HTML based on whether it's a card timer or regular timer
-        if (id.startsWith('card-')) {
-          // Product card timer display
-          timeUnits.forEach((unit, index) => {
-            html += `
-              <div style="
-                display: inline-flex;
-                align-items: center;
-                gap: 2px;
-              ">
+        timeUnits.forEach((unit, index) => {
+          html += `
+            <div class="hmstudio-card-countdown-unit" style="
+              display: inline-flex;
+              align-items: center;
+              gap: ${isMobile() ? '1px' : '2px'};
+              ${index < timeUnits.length - 1 ? `margin-${getCurrentLanguage() === 'ar' ? 'left' : 'right'}: ${isMobile() ? '4px' : '8px'};` : ''}
+            ">
+              <span style="
+                font-weight: bold;
+                min-width: ${isMobile() ? '16px' : '20px'};
+                text-align: center;
+              ">${String(unit.value).padStart(2, '0')}</span>
+              <span style="
+                font-size: ${isMobile() ? '0.8em' : '0.9em'};
+                opacity: 0.8;
+              ">${unit.label}</span>
+              ${index < timeUnits.length - 1 ? `
                 <span style="
-                  font-weight: bold;
-                  min-width: 16px;
-                  text-align: center;
-                ">${String(unit.value).padStart(2, '0')}</span>
-                <small style="opacity: 0.8;">${unit.label}</small>
-                ${index < timeUnits.length - 1 ? '<span style="margin: 0 4px;">:</span>' : ''}
-              </div>
-            `;
-          });
-        } else {
-          // Regular product page timer display
-          timeUnits.forEach((unit, index) => {
-            html += `
-              <div class="hmstudio-card-countdown-unit" style="
-                display: inline-flex;
-                align-items: center;
-                gap: ${isMobile() ? '1px' : '2px'};
-                ${index < timeUnits.length - 1 ? `margin-${getCurrentLanguage() === 'ar' ? 'left' : 'right'}: ${isMobile() ? '4px' : '8px'};` : ''}
-              ">
-                <span style="
-                  font-weight: bold;
-                  min-width: ${isMobile() ? '16px' : '20px'};
-                  text-align: center;
-                ">${String(unit.value).padStart(2, '0')}</span>
-                <span style="
-                  font-size: ${isMobile() ? '0.8em' : '0.9em'};
+                  margin-${getCurrentLanguage() === 'ar' ? 'right' : 'left'}: ${isMobile() ? '4px' : '8px'};
                   opacity: 0.8;
-                ">${unit.label}</span>
-                ${index < timeUnits.length - 1 ? `
-                  <span style="
-                    margin-${getCurrentLanguage() === 'ar' ? 'right' : 'left'}: ${isMobile() ? '4px' : '8px'};
-                    opacity: 0.8;
-                  ">:</span>
-                ` : ''}
-              </div>
-            `;
-          });
-        }
+                ">:</span>
+              ` : ''}
+            </div>
+          `;
+        });
 
         timer.element.innerHTML = html;
       });
     },
 
     setupProductCardTimers() {
+      console.log('Setting up product card timers');
       const productCards = document.querySelectorAll('.product-item');
       const processedCards = new Set();
-      
+    
       productCards.forEach(card => {
         let productId = null;
         const wishlistBtn = card.querySelector('[data-wishlist-id]');
         if (wishlistBtn) {
           productId = wishlistBtn.getAttribute('data-wishlist-id');
         }
-
+    
         if (productId && !processedCards.has(productId)) {
           processedCards.add(productId);
           const activeCampaign = this.findActiveCampaignForProduct(productId);
           if (activeCampaign) {
+            console.log('Found active campaign for product:', productId);
             const timer = this.createProductCardTimer(activeCampaign, productId);
-            const imageContainer = card.querySelector('.content');
-            if (imageContainer && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
-              imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
+            const contentContainer = card.querySelector('.content');
+            if (contentContainer) {
+              // Insert timer after the content container
+              contentContainer.parentNode.insertBefore(timer, contentContainer.nextSibling);
+              console.log('Timer inserted for product:', productId);
+            } else {
+              console.log('Content container not found for product:', productId);
             }
           }
         }
@@ -716,6 +633,11 @@
         // Create sticky cart regardless of campaigns
         this.createStickyCart();
 
+        // Always check for product cards
+  if (document.querySelectorAll('.product-item').length > 0) {
+    console.log('Found product cards, setting up timers');
+    this.setupProductCardTimers();
+  }
         // Setup timer if there's an active campaign
         const wishlistBtn = document.querySelector('[data-wishlist-id]');
         const productForm = document.querySelector('form[data-product-id]');
