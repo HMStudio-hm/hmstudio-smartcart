@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.4.5
+// src/scripts/smartCart.js v1.4.6
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -338,7 +338,8 @@
         element: timeElement,
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000)
+          new Date(campaign.endTime.seconds * 1000),
+        campaign: campaign // Store campaign data for auto-restart
       });
 
       return container;
@@ -383,7 +384,8 @@
         element: timeElement,
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000)
+          new Date(campaign.endTime.seconds * 1000),
+        campaign: campaign // Store campaign data for auto-restart
       });
 
       return container;
@@ -398,13 +400,26 @@
         const timeDiff = timer.endTime - now;
 
         if (timeDiff <= 0) {
-          const elementId = id.startsWith('card-') ? 
-            `hmstudio-card-countdown-${id.replace('card-', '')}` :
-            `hmstudio-countdown-${id}`;
-          const element = document.getElementById(elementId);
-          if (element) element.remove();
-          this.activeTimers.delete(id);
-          return;
+          // Check if timer should auto-restart
+          if (timer.campaign?.timerSettings?.autoRestart) {
+            // Calculate new end time by adding original duration to current time
+            const totalMilliseconds = 
+              (timer.campaign.duration.days * 24 * 60 * 60 * 1000) +
+              (timer.campaign.duration.hours * 60 * 60 * 1000) +
+              (timer.campaign.duration.minutes * 60 * 1000) +
+              (timer.campaign.duration.seconds * 1000);
+            
+            timer.endTime = new Date(now.getTime() + totalMilliseconds);
+          } else {
+            // Remove timer if auto-restart is disabled
+            const elementId = id.startsWith('card-') ? 
+              `hmstudio-card-countdown-${id.replace('card-', '')}` :
+              `hmstudio-countdown-${id}`;
+            const element = document.getElementById(elementId);
+            if (element) element.remove();
+            this.activeTimers.delete(id);
+            return;
+          }
         }
 
         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
