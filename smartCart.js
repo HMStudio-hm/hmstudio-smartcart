@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.4.7
+// src/scripts/smartCart.js v1.4.8
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -339,7 +339,15 @@
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
           new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign // Store campaign data for auto-restart
+        campaign: {
+          ...campaign,
+          duration: campaign.duration || {
+            days: 0,
+            hours: 0,
+            minutes: 0, // Default to 2 minutes if not specified
+            seconds: 0
+          }
+        }
       });
 
       return container;
@@ -385,7 +393,15 @@
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
           new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign // Store campaign data for auto-restart
+        campaign: {
+          ...campaign,
+          duration: campaign.duration || {
+            days: 0,
+            hours: 0,
+            minutes: 0, // Default to 2 minutes if not specified
+            seconds: 0
+          }
+        }
       });
 
       return container;
@@ -396,33 +412,39 @@
       this.activeTimers.forEach((timer, id) => {
         if (!timer.element || !timer.endTime || !timer.campaign) return;
 
-        const timeDiff = timer.endTime - now;
+        let timeDiff = timer.endTime - now;
 
-        if (timeDiff <= 0) {
-          // Check if timer should auto-restart
-          if (timer.campaign.timerSettings?.autoRestart) {
-            console.log('Auto-restarting timer for:', id);
-            // Calculate new end time based on original duration
-            const totalMilliseconds = 
-              (timer.campaign.duration.days * 24 * 60 * 60 * 1000) +
-              (timer.campaign.duration.hours * 60 * 60 * 1000) +
-              (timer.campaign.duration.minutes * 60 * 1000) +
-              (timer.campaign.duration.seconds * 1000);
-            
-            timer.endTime = new Date(now.getTime() + totalMilliseconds);
-            console.log('New end time set to:', timer.endTime);
-          } else {
-            // Remove timer if auto-restart is disabled
-            const elementId = id.startsWith('card-') ? 
-              `hmstudio-card-countdown-${id.replace('card-', '')}` :
-              `hmstudio-countdown-${id}`;
-            const element = document.getElementById(elementId);
-            if (element) element.remove();
-            this.activeTimers.delete(id);
-            return;
-          }
+        if (timeDiff <= 0 && timer.campaign.timerSettings?.autoRestart) {
+          console.log('Auto-restarting timer for:', id);
+          
+          // Calculate duration in milliseconds
+          const duration = 
+            (timer.campaign.duration.days * 24 * 60 * 60 * 1000) +
+            (timer.campaign.duration.hours * 60 * 60 * 1000) +
+            (timer.campaign.duration.minutes * 60 * 1000) +
+            (timer.campaign.duration.seconds * 1000);
+
+          // Calculate how many full cycles have passed
+          const cycles = Math.floor(Math.abs(timeDiff) / duration) + 1;
+          
+          // Set new end time
+          timer.endTime = new Date(timer.endTime.getTime() + (duration * cycles));
+          console.log('Timer restarted, new end time:', timer.endTime);
+          
+          // Recalculate time difference
+          timeDiff = timer.endTime - now;
+        } else if (timeDiff <= 0) {
+          // Remove timer if auto-restart is disabled
+          const elementId = id.startsWith('card-') ? 
+            `hmstudio-card-countdown-${id.replace('card-', '')}` :
+            `hmstudio-countdown-${id}`;
+          const element = document.getElementById(elementId);
+          if (element) element.remove();
+          this.activeTimers.delete(id);
+          return;
         }
 
+        // Rest of timer display logic
         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
