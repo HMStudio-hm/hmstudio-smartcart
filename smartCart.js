@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.5.1
+// src/scripts/smartCart.js v1.5.2
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -81,6 +81,7 @@
         display: none;
         direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
       `;
+    
       const wrapper = document.createElement('div');
       wrapper.style.cssText = `
         max-width: 1200px;
@@ -118,7 +119,6 @@
         font-size: ${isMobile() ? '14px' : '16px'};
         user-select: none;
       `;
-    
       const quantityInput = document.createElement('input');
       quantityInput.type = 'number';
       quantityInput.min = '1';
@@ -199,6 +199,7 @@
         font-size: ${isMobile() ? '13px' : '14px'};
         ${isMobile() ? 'width: 100%;' : ''}
       `;
+    
       addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
       addButton.addEventListener('mouseout', () => addButton.style.opacity = '1');
       addButton.addEventListener('click', () => {
@@ -247,7 +248,6 @@
         }
       });
     },
-
     findActiveCampaignForProduct(productId) {
       const now = new Date();
       const activeCampaign = this.campaigns.find(campaign => {
@@ -339,11 +339,24 @@
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
           new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign
+        campaign: {
+          ...campaign,
+          timerSettings: {
+            ...campaign.timerSettings,
+            autoRestart: campaign.timerSettings?.autoRestart || false
+          },
+          duration: campaign.duration || {
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0
+          }
+        }
       });
 
       return container;
     },
+
     createProductCardTimer(campaign, productId) {
       const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
       if (existingTimer) {
@@ -379,7 +392,6 @@
         align-items: center;
         justify-content: center;
         gap: ${isMobile() ? '2px' : '4px'};
-        font-weight: bold;
       `;
 
       container.appendChild(timeElement);
@@ -389,12 +401,23 @@
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
           new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign
+        campaign: {
+          ...campaign,
+          timerSettings: {
+            ...campaign.timerSettings,
+            autoRestart: campaign.timerSettings?.autoRestart || false
+          },
+          duration: campaign.duration || {
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0
+          }
+        }
       });
 
       return container;
     },
-
     updateAllTimers() {
       const now = new Date();
       
@@ -407,16 +430,18 @@
           // Check if timer should auto-restart
           if (timer.campaign.timerSettings?.autoRestart) {
             console.log('Auto-restarting timer for:', id);
+            
+            // Calculate duration in milliseconds
             const duration = 
               (timer.campaign.duration.days * 24 * 60 * 60 * 1000) +
               (timer.campaign.duration.hours * 60 * 60 * 1000) +
               (timer.campaign.duration.minutes * 60 * 1000) +
               (timer.campaign.duration.seconds * 1000);
 
-            // Calculate how many cycles have passed and add one
+            // Calculate how many full cycles have passed
             const cycles = Math.floor(Math.abs(timeDiff) / duration) + 1;
             
-            // Set new end time
+            // Set new end time by adding required cycles
             timer.endTime = new Date(timer.endTime.getTime() + (duration * cycles));
             console.log('Timer restarted, new end time:', timer.endTime);
             
@@ -434,12 +459,14 @@
           }
         }
 
+        // Calculate time components
         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
 
-        const timeUnits = [];
+        let timeUnits = [];
+
         if (days > 0) {
           timeUnits.push({
             value: days,
@@ -467,28 +494,61 @@
         });
 
         let html = '';
-        timeUnits.forEach((unit, index) => {
-          html += `
-            <div style="
-              display: inline-flex; 
-              align-items: center; 
-              gap: 2px;
-              ${index < timeUnits.length - 1 ? `margin-${getCurrentLanguage() === 'ar' ? 'left' : 'right'}: 8px;` : ''}
-            ">
-              <span style="font-weight: bold; min-width: 20px; text-align: center;">
-                ${String(unit.value).padStart(2, '0')}
-              </span>
-              <span style="font-size: 0.8em; opacity: 0.8;">${unit.label}</span>
-              ${index < timeUnits.length - 1 ? `
-                <span style="margin-${getCurrentLanguage() === 'ar' ? 'right' : 'left'}: 8px; opacity: 0.8;">:</span>
-              ` : ''}
-            </div>
-          `;
-        });
+        
+        // Generate HTML based on whether it's a card timer or regular timer
+        if (id.startsWith('card-')) {
+          // Product card timer display
+          timeUnits.forEach((unit, index) => {
+            html += `
+              <div style="
+                display: inline-flex;
+                align-items: center;
+                gap: 2px;
+              ">
+                <span style="
+                  font-weight: bold;
+                  min-width: 16px;
+                  text-align: center;
+                ">${String(unit.value).padStart(2, '0')}</span>
+                <small style="opacity: 0.8;">${unit.label}</small>
+                ${index < timeUnits.length - 1 ? '<span style="margin: 0 4px;">:</span>' : ''}
+              </div>
+            `;
+          });
+        } else {
+          // Regular product page timer display
+          timeUnits.forEach((unit, index) => {
+            html += `
+              <div class="hmstudio-card-countdown-unit" style="
+                display: inline-flex;
+                align-items: center;
+                gap: ${isMobile() ? '1px' : '2px'};
+                ${index < timeUnits.length - 1 ? `margin-${getCurrentLanguage() === 'ar' ? 'left' : 'right'}: ${isMobile() ? '4px' : '8px'};` : ''}
+              ">
+                <span style="
+                  font-weight: bold;
+                  min-width: ${isMobile() ? '16px' : '20px'};
+                  text-align: center;
+                ">${String(unit.value).padStart(2, '0')}</span>
+                <span style="
+                  font-size: ${isMobile() ? '0.8em' : '0.9em'};
+                  opacity: 0.8;
+                ">${unit.label}</span>
+                ${index < timeUnits.length - 1 ? `
+                  <span style="
+                    margin-${getCurrentLanguage() === 'ar' ? 'right' : 'left'}: ${isMobile() ? '4px' : '8px'};
+                    opacity: 0.8;
+                  ">:</span>
+                ` : ''}
+              </div>
+            `;
+          });
+        }
 
         timer.element.innerHTML = html;
       });
     },
+
     setupProductCardTimers() {
       const productCards = document.querySelectorAll('.product-item');
       const processedCards = new Set();
@@ -513,7 +573,6 @@
         }
       });
     },
-
     setupProductTimer() {
       console.log('Setting up product timer...');
 
@@ -567,9 +626,6 @@
           }
         }
       }
-
-      // Create sticky cart regardless of campaign
-      this.createStickyCart();
     },
 
     startTimerUpdates() {
@@ -593,17 +649,39 @@
       
       if (document.querySelector('.product.products-details-page')) {
         console.log('On product page');
-        this.setupProductTimer();
+        // Create sticky cart regardless of campaigns
+        this.createStickyCart();
 
-        if (this.activeTimers.size > 0) {
-          this.startTimerUpdates();
+        // Setup timer if there's an active campaign
+        const wishlistBtn = document.querySelector('[data-wishlist-id]');
+        const productForm = document.querySelector('form[data-product-id]');
+        const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
+                         productForm?.getAttribute('data-product-id');
+
+        if (productId) {
+          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          if (activeCampaign) {
+            this.setupProductTimer();
+            if (this.activeTimers.size > 0) {
+              this.startTimerUpdates();
+            }
+          }
         }
 
         const observer = new MutationObserver((mutations) => {
-          if (!document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-            this.setupProductTimer();
-            if (this.activeTimers.size > 0 && !this.updateInterval) {
-              this.startTimerUpdates();
+          // Check if sticky cart needs to be recreated
+          if (!document.getElementById('hmstudio-sticky-cart')) {
+            this.createStickyCart();
+          }
+
+          // Check if timer needs to be updated (only if there's an active campaign)
+          if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+            const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
+            if (activeCampaign) {
+              this.setupProductTimer();
+              if (this.activeTimers.size > 0 && !this.updateInterval) {
+                this.startTimerUpdates();
+              }
             }
           }
         });
@@ -640,7 +718,7 @@
   // Handle mobile viewport changes
   window.addEventListener('resize', () => {
     if (SmartCart.stickyCartElement) {
-      SmartCart.createStickyCart();
+      SmartCart.createStickyCart(); // Recreate sticky cart with updated mobile styles
     }
   });
 
