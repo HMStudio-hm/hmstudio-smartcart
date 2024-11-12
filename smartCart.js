@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.4.9
+// src/scripts/smartCart.js v1.5.0
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -341,10 +341,14 @@
           new Date(campaign.endTime.seconds * 1000),
         campaign: {
           ...campaign,
+          timerSettings: {
+            ...campaign.timerSettings,
+            autoRestart: campaign.timerSettings?.autoRestart || false
+          },
           duration: campaign.duration || {
             days: 0,
             hours: 0,
-            minutes: 0, // Default to 2 minutes if not specified
+            minutes: 0,
             seconds: 0
           }
         }
@@ -356,6 +360,10 @@
     createProductCardTimer(campaign, productId) {
       const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
       if (existingTimer) {
+        if (this.activeTimers.has(`card-${productId}`)) {
+          clearInterval(this.activeTimers.get(`card-${productId}`));
+          this.activeTimers.delete(`card-${productId}`);
+        }
         return existingTimer;
       }
 
@@ -395,10 +403,14 @@
           new Date(campaign.endTime.seconds * 1000),
         campaign: {
           ...campaign,
+          timerSettings: {
+            ...campaign.timerSettings,
+            autoRestart: campaign.timerSettings?.autoRestart || false
+          },
           duration: campaign.duration || {
             days: 0,
             hours: 0,
-            minutes: 0, // Default to 2 minutes if not specified
+            minutes: 0,
             seconds: 0
           }
         }
