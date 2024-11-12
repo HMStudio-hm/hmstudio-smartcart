@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.5.5
+// src/scripts/smartCart.js v1.5.6
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -340,9 +340,19 @@
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
           new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign,
-        lastUpdate: null,
-        lastSeconds: null
+        campaign: {
+          ...campaign,
+          timerSettings: {
+            ...campaign.timerSettings,
+            autoRestart: campaign.timerSettings?.autoRestart || false
+          },
+          duration: campaign.duration || {
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0
+          }
+        }
       });
 
       return container;
@@ -355,7 +365,7 @@
           clearInterval(this.activeTimers.get(`card-${productId}`));
           this.activeTimers.delete(`card-${productId}`);
         }
-        existingTimer.remove();
+        return existingTimer;
       }
 
       const container = document.createElement('div');
@@ -394,9 +404,19 @@
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
           new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign,
-        lastUpdate: null,
-        lastSeconds: null
+        campaign: {
+          ...campaign,
+          timerSettings: {
+            ...campaign.timerSettings,
+            autoRestart: campaign.timerSettings?.autoRestart || false
+          },
+          duration: campaign.duration || {
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0
+          }
+        }
       });
 
       return container;
