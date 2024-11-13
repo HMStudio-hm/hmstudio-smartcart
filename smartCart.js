@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.6.1
+// src/scripts/smartCart.js v1.6.2
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -30,7 +30,8 @@
             timerSettings: {
                 ...campaign.timerSettings,
                 textAr: decodeURIComponent(campaign.timerSettings.textAr || ''),
-                textEn: decodeURIComponent(campaign.timerSettings.textEn || '')
+                textEn: decodeURIComponent(campaign.timerSettings.textEn || ''),
+                autoRestart: campaign.timerSettings.autoRestart || false
             }
         }));
     } catch (error) {
@@ -60,6 +61,7 @@
     currentProductId: null,
     activeTimers: new Map(),
     updateInterval: null,
+    originalDurations: new Map(), // Store original durations for auto-restart
 
     createStickyCart() {
       if (this.stickyCartElement) {
@@ -270,7 +272,17 @@
           return false;
         }
 
-        const isNotEnded = now <= endTime;
+        // Store original duration when finding active campaign
+        if (hasProduct && !this.originalDurations.has(campaign.id)) {
+          const startTime = campaign.startTime?._seconds ? 
+            new Date(campaign.startTime._seconds * 1000) :
+            new Date(campaign.startTime.seconds * 1000);
+          
+          const duration = endTime - startTime;
+          this.originalDurations.set(campaign.id, duration);
+        }
+
+        const isNotEnded = now <= endTime || campaign.timerSettings.autoRestart;
         const isActive = campaign.status === 'active';
 
         return hasProduct && isNotEnded && isActive;
@@ -334,11 +346,15 @@
       container.appendChild(textElement);
       container.appendChild(timeElement);
 
+      let endTime = campaign.endTime?._seconds ? 
+        new Date(campaign.endTime._seconds * 1000) :
+        new Date(campaign.endTime.seconds * 1000);
+
       this.activeTimers.set(productId, {
         element: timeElement,
-        endTime: campaign.endTime?._seconds ? 
-          new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000)
+        endTime: endTime,
+        campaign: campaign,
+        originalDuration: this.originalDurations.get(campaign.id)
       });
 
       return container;
@@ -393,41 +409,29 @@
       const now = new Date();
       
       this.activeTimers.forEach((timer, id) => {
-        if (!timer.element || !timer.endTime || !timer.campaign) return;
+        if (!timer.element || !timer.endTime) return;
 
         let timeDiff = timer.endTime - now;
 
-        if (timeDiff <= 0) {
-          // Check if timer should auto-restart
-          if (timer.campaign.timerSettings?.autoRestart) {
-            console.log('Auto-restarting timer for:', id);
-            
-            // Calculate duration in milliseconds
-            const duration = 
-              (timer.campaign.duration.days * 24 * 60 * 60 * 1000) +
-              (timer.campaign.duration.hours * 60 * 60 * 1000) +
-              (timer.campaign.duration.minutes * 60 * 1000) +
-              (timer.campaign.duration.seconds * 1000);
+        // Handle auto-restart
+        if (timeDiff <= 0 && timer.campaign?.timerSettings?.autoRestart && timer.originalDuration) {
+          // Calculate new end time based on original duration
+          const newEndTime = new Date(now.getTime() + timer.originalDuration);
+          timer.endTime = newEndTime;
+          timeDiff = timer.originalDuration;
+          
+          // Log restart for debugging
+          console.log(`Timer restarted for campaign ${timer.campaign.id}, new end time:`, newEndTime);
+        }
 
-            // Calculate how many full cycles have passed
-            const cycles = Math.floor(Math.abs(timeDiff) / duration) + 1;
-            
-            // Set new end time by adding required cycles
-            timer.endTime = new Date(timer.endTime.getTime() + (duration * cycles));
-            console.log('Timer restarted, new end time:', timer.endTime);
-            
-            // Recalculate time difference with new end time
-            timeDiff = timer.endTime - now;
-          } else {
-            // Remove timer if auto-restart is disabled
-            const elementId = id.startsWith('card-') ? 
-              `hmstudio-card-countdown-${id.replace('card-', '')}` :
-              `hmstudio-countdown-${id}`;
-            const element = document.getElementById(elementId);
-            if (element) element.remove();
-            this.activeTimers.delete(id);
-            return;
-          }
+        if (timeDiff <= 0 && !timer.campaign?.timerSettings?.autoRestart) {
+          const elementId = id.startsWith('card-') ? 
+            `hmstudio-card-countdown-${id.replace('card-', '')}` :
+            `hmstudio-countdown-${id}`;
+          const element = document.getElementById(elementId);
+          if (element) element.remove();
+          this.activeTimers.delete(id);
+          return;
         }
 
         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
