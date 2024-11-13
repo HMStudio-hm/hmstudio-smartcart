@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.6.2
+// src/scripts/smartCart.js v1.6.3
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -395,11 +395,21 @@
 
       container.appendChild(timeElement);
 
+      let endTime = campaign.endTime?._seconds ? 
+        new Date(campaign.endTime._seconds * 1000) :
+        new Date(campaign.endTime.seconds * 1000);
+
+      const startTime = campaign.startTime?._seconds ? 
+        new Date(campaign.startTime._seconds * 1000) :
+        new Date(campaign.startTime.seconds * 1000);
+
+      const originalDuration = endTime - startTime;
+
       this.activeTimers.set(`card-${productId}`, {
         element: timeElement,
-        endTime: campaign.endTime?._seconds ? 
-          new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000)
+        endTime: endTime,
+        campaign: campaign,
+        originalDuration: originalDuration
       });
 
       return container;
@@ -413,7 +423,7 @@
 
         let timeDiff = timer.endTime - now;
 
-        // Handle auto-restart
+        // Handle auto-restart for both product page and card timers
         if (timeDiff <= 0 && timer.campaign?.timerSettings?.autoRestart && timer.originalDuration) {
           // Calculate new end time based on original duration
           const newEndTime = new Date(now.getTime() + timer.originalDuration);
@@ -421,10 +431,8 @@
           timeDiff = timer.originalDuration;
           
           // Log restart for debugging
-          console.log(`Timer restarted for campaign ${timer.campaign.id}, new end time:`, newEndTime);
-        }
-
-        if (timeDiff <= 0 && !timer.campaign?.timerSettings?.autoRestart) {
+          console.log(`Timer restarted for ${id}, new end time:`, newEndTime);
+        } else if (timeDiff <= 0 && !timer.campaign?.timerSettings?.autoRestart) {
           const elementId = id.startsWith('card-') ? 
             `hmstudio-card-countdown-${id.replace('card-', '')}` :
             `hmstudio-countdown-${id}`;
@@ -434,6 +442,7 @@
           return;
         }
 
+        // Format timer display
         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
