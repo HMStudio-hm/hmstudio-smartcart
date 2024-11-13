@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.5.7
+// src/scripts/smartCart.js v1.5.8
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -598,36 +598,31 @@
     initialize() {
       console.log('Initializing Smart Cart with campaigns:', this.campaigns);
       
-      this.stopTimerUpdates();
-      
-      if (document.querySelector('.product.products-details-page')) {
-        console.log('On product page');
-        // Create sticky cart regardless of campaigns
-        this.createStickyCart();
-
-        // Setup timer if there's an active campaign
-        const wishlistBtn = document.querySelector('[data-wishlist-id]');
-        const productForm = document.querySelector('form[data-product-id]');
-        const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
-                         productForm?.getAttribute('data-product-id');
-
-        if (productId) {
-          const activeCampaign = this.findActiveCampaignForProduct(productId);
-          if (activeCampaign) {
-            this.setupProductTimer();
-            if (this.activeTimers.size > 0) {
-              this.startTimerUpdates();
-            }
-          }
+      // Only set up timers if we have campaigns
+      if (this.campaigns.length > 0) {
+        if (document.querySelector('.product.products-details-page')) {
+          this.createStickyCart();
+          this.setupProductTimer();
+        } else if (document.querySelector('.product-item')) {
+          this.setupProductCardTimers();
         }
 
-        const observer = new MutationObserver((mutations) => {
-          // Check if sticky cart needs to be recreated
+        if (this.activeTimers.size > 0) {
+          this.startTimerUpdates();
+        }
+      } else {
+        // If no campaigns, just set up sticky cart on product pages
+        if (document.querySelector('.product.products-details-page')) {
+          this.createStickyCart();
+        }
+      }
+
+      // Set up mutation observer for dynamic content
+      const observer = new MutationObserver(() => {
+        if (document.querySelector('.product.products-details-page')) {
           if (!document.getElementById('hmstudio-sticky-cart')) {
             this.createStickyCart();
           }
-
-          // Check if timer needs to be updated (only if there's an active campaign)
           if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
             const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
             if (activeCampaign) {
@@ -637,47 +632,60 @@
               }
             }
           }
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-      } else if (document.querySelector('.product-item')) {
-        console.log('On product listing page, setting up card timers');
-        this.setupProductCardTimers();
-
-        if (this.activeTimers.size > 0) {
-          this.startTimerUpdates();
+        } else if (document.querySelector('.product-item') && this.campaigns.length > 0) {
+          this.setupProductCardTimers();
+          if (this.activeTimers.size > 0 && !this.updateInterval) {
+            this.startTimerUpdates();
+          }
         }
+      });
 
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            if (mutation.addedNodes.length) {
-              this.setupProductCardTimers();
-              if (this.activeTimers.size > 0 && !this.updateInterval) {
-                this.startTimerUpdates();
-              }
-            }
-          });
-        });
+      observer.observe(document.body, { childList: true, subtree: true });
 
-        observer.observe(document.body, { childList: true, subtree: true });
-      }
+      // Clean up timers when page is hidden or unloaded
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          this.stopTimerUpdates();
+        } else {
+          if (this.activeTimers.size > 0) {
+            this.startTimerUpdates();
+          }
+        }
+      });
     }
   };
 
+  // Handle page unload
   window.addEventListener('beforeunload', () => {
     SmartCart.stopTimerUpdates();
   });
 
   // Handle mobile viewport changes
+  let resizeTimeout;
   window.addEventListener('resize', () => {
-    if (SmartCart.stickyCartElement) {
-      SmartCart.createStickyCart();
-    }
+    // Debounce resize event
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (SmartCart.stickyCartElement) {
+        SmartCart.createStickyCart();
+      }
+    }, 250); // Wait 250ms after last resize event
   });
 
+  // Initialize when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => SmartCart.initialize());
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        SmartCart.initialize();
+      } catch (error) {
+        console.error('Error initializing SmartCart:', error);
+      }
+    });
   } else {
-    SmartCart.initialize();
+    try {
+      SmartCart.initialize();
+    } catch (error) {
+      console.error('Error initializing SmartCart:', error);
+    }
   }
 })();
