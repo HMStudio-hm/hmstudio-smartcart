@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.5.9
+// src/scripts/smartCart.js v1.6.0
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -30,8 +30,7 @@
             timerSettings: {
                 ...campaign.timerSettings,
                 textAr: decodeURIComponent(campaign.timerSettings.textAr || ''),
-                textEn: decodeURIComponent(campaign.timerSettings.textEn || ''),
-                autoRestart: campaign.timerSettings?.autoRestart || false
+                textEn: decodeURIComponent(campaign.timerSettings.textEn || '')
             }
         }));
     } catch (error) {
@@ -339,8 +338,7 @@
         element: timeElement,
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign
+          new Date(campaign.endTime.seconds * 1000)
       });
 
       return container;
@@ -349,11 +347,7 @@
     createProductCardTimer(campaign, productId) {
       const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
       if (existingTimer) {
-        if (this.activeTimers.has(`card-${productId}`)) {
-          clearInterval(this.activeTimers.get(`card-${productId}`));
-          this.activeTimers.delete(`card-${productId}`);
-        }
-        existingTimer.remove();
+        return existingTimer;
       }
 
       const container = document.createElement('div');
@@ -389,8 +383,7 @@
         element: timeElement,
         endTime: campaign.endTime?._seconds ? 
           new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign
+          new Date(campaign.endTime.seconds * 1000)
       });
 
       return container;
@@ -398,106 +391,177 @@
 
     updateAllTimers() {
       const now = new Date();
-      let timerUpdateRequired = false;
       
-      // Use requestAnimationFrame for smoother updates
-      const updateTimers = () => {
-        this.activeTimers.forEach((timer, id) => {
-          if (!timer?.element || !timer?.endTime || !timer?.campaign) return;
+      this.activeTimers.forEach((timer, id) => {
+        if (!timer.element || !timer.endTime) return;
 
-          const timeDiff = timer.endTime - now;
+        const timeDiff = timer.endTime - now;
 
-          if (timeDiff <= 0) {
-            if (timer.campaign.timerSettings?.autoRestart) {
-              const duration = 
-                (timer.campaign.duration.days * 24 * 60 * 60 * 1000) +
-                (timer.campaign.duration.hours * 60 * 60 * 1000) +
-                (timer.campaign.duration.minutes * 60 * 1000) +
-                (timer.campaign.duration.seconds * 1000);
+        if (timeDiff <= 0) {
+          const elementId = id.startsWith('card-') ? 
+            `hmstudio-card-countdown-${id.replace('card-', '')}` :
+            `hmstudio-countdown-${id}`;
+          const element = document.getElementById(elementId);
+          if (element) element.remove();
+          this.activeTimers.delete(id);
+          return;
+        }
 
-              timer.endTime = new Date(now.getTime() + duration);
-              timerUpdateRequired = true;
-            } else {
-              const elementId = id.startsWith('card-') ? 
-                `hmstudio-card-countdown-${id.replace('card-', '')}` :
-                `hmstudio-countdown-${id}`;
-              const element = document.getElementById(elementId);
-              if (element) element.remove();
-              this.activeTimers.delete(id);
-              return;
-            }
-          }
+        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
 
-          // Only update if seconds have changed
-          const currentSecond = Math.floor(timeDiff / 1000);
-          if (timer._lastSecond === currentSecond) return;
-          timer._lastSecond = currentSecond;
+        let timeUnits = [];
 
-          const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-          const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-          const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-
-          const isArabic = getCurrentLanguage() === 'ar';
-          const isMobileView = isMobile();
-
-          const timeSegments = [];
-          
-          if (days > 0) {
-            timeSegments.push({
-              value: String(days).padStart(2, '0'),
-              label: isArabic ? 'ي' : 'd'
-            });
-          }
-          if (hours > 0 || days > 0) {
-            timeSegments.push({
-              value: String(hours).padStart(2, '0'),
-              label: isArabic ? 'س' : 'h'
-            });
-          }
-          if (minutes > 0 || hours > 0 || days > 0) {
-            timeSegments.push({
-              value: String(minutes).padStart(2, '0'),
-              label: isArabic ? 'د' : 'm'
-            });
-          }
-          timeSegments.push({
-            value: String(seconds).padStart(2, '0'),
-            label: isArabic ? 'ث' : 's'
+        if (days > 0) {
+          timeUnits.push({
+            value: days,
+            label: getCurrentLanguage() === 'ar' ? 'ي' : 'd'
           });
+        }
 
-          if (timer.element) {
-            timer.element.innerHTML = timeSegments
-              .map((segment, index) => `
-                <span style="display:inline-flex;align-items:center;gap:2px">
-                  <span style="font-weight:bold;min-width:20px;text-align:center">
-                    ${segment.value}
-                  </span>
-                  <span style="font-size:${isMobileView ? '0.8em' : '0.9em'};opacity:0.8">
-                    ${segment.label}
-                  </span>
-                  ${index < timeSegments.length - 1 ? '<span style="margin:0 4px">:</span>' : ''}
-                </span>
-              `).join('');
-          }
+        if (hours > 0 || days > 0) {
+          timeUnits.push({
+            value: hours,
+            label: getCurrentLanguage() === 'ar' ? 'س' : 'h'
+          });
+        }
+
+        if (minutes > 0 || hours > 0 || days > 0) {
+          timeUnits.push({
+            value: minutes,
+            label: getCurrentLanguage() === 'ar' ? 'د' : 'm'
+          });
+        }
+
+        timeUnits.push({
+          value: seconds,
+          label: getCurrentLanguage() === 'ar' ? 'ث' : 's'
         });
 
-        if (timerUpdateRequired) {
-          requestAnimationFrame(updateTimers);
-        }
-      };
+        let html = '';
+        timeUnits.forEach((unit, index) => {
+          html += `
+            <div class="hmstudio-card-countdown-unit" style="
+              display: inline-flex;
+              align-items: center;
+              gap: ${isMobile() ? '1px' : '2px'};
+              ${index < timeUnits.length - 1 ? `margin-${getCurrentLanguage() === 'ar' ? 'left' : 'right'}: ${isMobile() ? '4px' : '8px'};` : ''}
+            ">
+              <span style="
+                font-weight: bold;
+                min-width: ${isMobile() ? '16px' : '20px'};
+                text-align: center;
+              ">${String(unit.value).padStart(2, '0')}</span>
+              <span style="
+                font-size: ${isMobile() ? '0.8em' : '0.9em'};
+                opacity: 0.8;
+              ">${unit.label}</span>
+              ${index < timeUnits.length - 1 ? `
+                <span style="
+                  margin-${getCurrentLanguage() === 'ar' ? 'right' : 'left'}: ${isMobile() ? '4px' : '8px'};
+                  opacity: 0.8;
+                ">:</span>
+              ` : ''}
+            </div>
+          `;
+        });
 
-      updateTimers();
+        timer.element.innerHTML = html;
+      });
+    },
+
+    setupProductCardTimers() {
+      const productCards = document.querySelectorAll('.product-item');
+      const processedCards = new Set();
+      
+      productCards.forEach(card => {
+        let productId = null;
+        const wishlistBtn = card.querySelector('[data-wishlist-id]');
+        if (wishlistBtn) {
+          productId = wishlistBtn.getAttribute('data-wishlist-id');
+        }
+
+        if (productId && !processedCards.has(productId)) {
+          processedCards.add(productId);
+          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          if (activeCampaign) {
+            const timer = this.createProductCardTimer(activeCampaign, productId);
+            const imageContainer = card.querySelector('.content');
+            if (imageContainer && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
+              imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
+            }
+          }
+        }
+      });
+    },
+
+    setupProductTimer() {
+      console.log('Setting up product timer...');
+
+      let productId;
+      const wishlistBtn = document.querySelector('[data-wishlist-id]');
+      if (wishlistBtn) {
+        productId = wishlistBtn.getAttribute('data-wishlist-id');
+      }
+
+      if (!productId) {
+        const productForm = document.querySelector('form[data-product-id]');
+        if (productForm) {
+          productId = productForm.getAttribute('data-product-id');
+        }
+      }
+
+      if (!productId) {
+        return;
+      }
+
+      this.currentProductId = productId;
+      const activeCampaign = this.findActiveCampaignForProduct(productId);
+
+      if (!activeCampaign) {
+        return;
+      }
+
+      const timer = this.createCountdownTimer(activeCampaign, productId);
+
+      const priceSelectors = [
+        'h2.product-formatted-price.theme-text-primary',
+        '.product-formatted-price',
+        '.product-formatted-price.theme-text-primary',
+        '.product-price',
+        'h2.theme-text-primary',
+        '.theme-text-primary'
+      ];
+
+      let inserted = false;
+      for (const selector of priceSelectors) {
+        const priceContainer = document.querySelector(selector);
+        
+        if (priceContainer?.parentElement) {
+          priceContainer.parentElement.insertBefore(timer, priceContainer);
+          inserted = true;
+          break;
+        }
+      }
+
+      if (!inserted) {
+        const productDetails = document.querySelector('.products-details');
+        if (productDetails) {
+          productDetails.insertBefore(timer, productDetails.firstChild);
+        }
+      }
+
+      // Create sticky cart after setting up timer
+      this.createStickyCart();
     },
 
     startTimerUpdates() {
       if (this.updateInterval) {
-        this.stopTimerUpdates();
+        clearInterval(this.updateInterval);
       }
-
-      this.updateInterval = setInterval(() => {
-        requestAnimationFrame(() => this.updateAllTimers());
-      }, 1000);
+      this.updateInterval = setInterval(() => this.updateAllTimers(), 1000);
     },
 
     stopTimerUpdates() {
@@ -507,223 +571,39 @@
       }
     },
 
-    setupProductTimer() {
-      if (this.currentProductId) {
-        const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
-        if (activeCampaign) {
-          const timer = this.createCountdownTimer(activeCampaign, this.currentProductId);
-          if (timer) {
-            const priceContainer = document.querySelector([
-              'h2.product-formatted-price.theme-text-primary',
-              '.product-formatted-price',
-              '.product-formatted-price.theme-text-primary',
-              '.product-price',
-              'h2.theme-text-primary',
-              '.theme-text-primary'
-            ].join(','));
-
-            if (priceContainer?.parentElement) {
-              priceContainer.parentElement.insertBefore(timer, priceContainer);
-            } else {
-              const productDetails = document.querySelector('.products-details');
-              if (productDetails) {
-                productDetails.insertBefore(timer, productDetails.firstChild);
-              }
-            }
-          }
-        }
-      }
-    },
-
-    setupProductCardTimers() {
-      const processedCards = new Set();
-      document.querySelectorAll('.product-item').forEach(card => {
-        const wishlistBtn = card.querySelector('[data-wishlist-id]');
-        if (!wishlistBtn) return;
-
-        const productId = wishlistBtn.getAttribute('data-wishlist-id');
-        if (!productId || processedCards.has(productId)) return;
-
-        processedCards.add(productId);
-        const activeCampaign = this.findActiveCampaignForProduct(productId);
-        if (!activeCampaign) return;
-
-        const imageContainer = card.querySelector('.content');
-        if (!imageContainer || document.getElementById(`hmstudio-card-countdown-${productId}`)) return;
-
-        const timer = this.createProductCardTimer(activeCampaign, productId);
-        imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
-      });
-    },
-
-    findActiveCampaignForProduct(productId) {
-      if (!productId) return null;
-      
-      const now = new Date();
-      return this.campaigns.find(campaign => {
-        if (!campaign?.products?.length) return false;
-
-        const hasProduct = campaign.products.some(p => p.id === productId);
-        if (!hasProduct) return false;
-
-        let endTime;
-        try {
-          endTime = campaign.endTime?._seconds ? 
-            new Date(campaign.endTime._seconds * 1000) :
-            new Date(campaign.endTime.seconds * 1000);
-        } catch (error) {
-          return false;
-        }
-
-        if (!(endTime instanceof Date && !isNaN(endTime))) return false;
-
-        return campaign.status === 'active';
-      });
-    },
-
-    createCountdownTimer(campaign, productId) {
-      const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`);
-      if (existingTimer) {
-        if (this.activeTimers.has(productId)) {
-          clearInterval(this.activeTimers.get(productId));
-          this.activeTimers.delete(productId);
-        }
-        existingTimer.remove();
-      }
-
-      const container = document.createElement('div');
-      container.id = `hmstudio-countdown-${productId}`;
-      container.style.cssText = `
-        background: ${campaign.timerSettings.backgroundColor};
-        color: ${campaign.timerSettings.textColor};
-        padding: ${isMobile() ? '8px 10px' : '12px 15px'};
-        margin: ${isMobile() ? '10px 0' : '15px 0'};
-        border-radius: 8px;
-        text-align: center;
-        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: ${isMobile() ? '8px' : '12px'};
-        font-size: ${isMobile() ? '12px' : '14px'};
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        flex-wrap: ${isMobile() ? 'wrap' : 'nowrap'};
-        width: ${isMobile() ? '100%' : 'auto'};
-      `;
-
-      const textElement = document.createElement('span');
-      const timerText = getCurrentLanguage() === 'ar' ? 
-        campaign.timerSettings.textAr : 
-        campaign.timerSettings.textEn;
-      textElement.textContent = timerText;
-      textElement.style.cssText = `
-        font-weight: 500;
-        ${isMobile() ? 'width: 100%; margin-bottom: 4px;' : ''}
-      `;
-        
-      const timeElement = document.createElement('div');
-      timeElement.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: bold;
-        padding: 4px 8px;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.15);
-        ${isMobile() ? 'width: 100%; justify-content: center;' : ''}
-      `;
-
-      container.appendChild(textElement);
-      container.appendChild(timeElement);
-
-      this.activeTimers.set(productId, {
-        element: timeElement,
-        endTime: campaign.endTime?._seconds ? 
-          new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign
-      });
-
-      return container;
-    },
-
-    createProductCardTimer(campaign, productId) {
-      const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-      if (existingTimer) {
-        if (this.activeTimers.has(`card-${productId}`)) {
-          clearInterval(this.activeTimers.get(`card-${productId}`));
-          this.activeTimers.delete(`card-${productId}`);
-        }
-        existingTimer.remove();
-      }
-
-      const container = document.createElement('div');
-      container.id = `hmstudio-card-countdown-${productId}`;
-      container.style.cssText = `
-        background: ${campaign.timerSettings.backgroundColor};
-        color: ${campaign.timerSettings.textColor};
-        padding: 4px;
-        margin-top: 30px !important;
-        border-bottom-right-radius: 8px;
-        border-bottom-left-radius: 8px;
-        text-align: center;
-        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        font-size: ${isMobile() ? '11px' : '13px'};
-        width: 100%;
-      `;
-
-      const timeElement = document.createElement('div');
-      timeElement.style.cssText = `
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: ${isMobile() ? '2px' : '4px'};
-      `;
-
-      container.appendChild(timeElement);
-
-      this.activeTimers.set(`card-${productId}`, {
-        element: timeElement,
-        endTime: campaign.endTime?._seconds ? 
-          new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000),
-        campaign: campaign
-      });
-
-      return container;
-    },
     initialize() {
       console.log('Initializing Smart Cart with campaigns:', this.campaigns);
       
-      // Only set up timers if we have campaigns
-      if (this.campaigns.length > 0) {
-        if (document.querySelector('.product.products-details-page')) {
-          this.createStickyCart();
-          this.setupProductTimer();
-        } else if (document.querySelector('.product-item')) {
-          this.setupProductCardTimers();
+      this.stopTimerUpdates();
+      
+      if (document.querySelector('.product.products-details-page')) {
+        console.log('On product page');
+        // Create sticky cart regardless of campaigns
+        this.createStickyCart();
+
+        // Setup timer if there's an active campaign
+        const wishlistBtn = document.querySelector('[data-wishlist-id]');
+        const productForm = document.querySelector('form[data-product-id]');
+        const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
+                         productForm?.getAttribute('data-product-id');
+
+        if (productId) {
+          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          if (activeCampaign) {
+            this.setupProductTimer();
+            if (this.activeTimers.size > 0) {
+              this.startTimerUpdates();
+            }
+          }
         }
 
-        if (this.activeTimers.size > 0) {
-          this.startTimerUpdates();
-        }
-      } else {
-        // If no campaigns, just set up sticky cart on product pages
-        if (document.querySelector('.product.products-details-page')) {
-          this.createStickyCart();
-        }
-      }
-
-      // Set up mutation observer for dynamic content
-      const observer = new MutationObserver(() => {
-        if (document.querySelector('.product.products-details-page')) {
+        const observer = new MutationObserver((mutations) => {
+          // Check if sticky cart needs to be recreated
           if (!document.getElementById('hmstudio-sticky-cart')) {
             this.createStickyCart();
           }
+
+          // Check if timer needs to be updated (only if there's an active campaign)
           if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
             const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
             if (activeCampaign) {
@@ -733,60 +613,47 @@
               }
             }
           }
-        } else if (document.querySelector('.product-item') && this.campaigns.length > 0) {
-          this.setupProductCardTimers();
-          if (this.activeTimers.size > 0 && !this.updateInterval) {
-            this.startTimerUpdates();
-          }
-        }
-      });
+        });
 
-      observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.body, { childList: true, subtree: true });
+      } else if (document.querySelector('.product-item')) {
+        console.log('On product listing page, setting up card timers');
+        this.setupProductCardTimers();
 
-      // Clean up timers when page is hidden or unloaded
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-          this.stopTimerUpdates();
-        } else {
-          if (this.activeTimers.size > 0) {
-            this.startTimerUpdates();
-          }
+        if (this.activeTimers.size > 0) {
+          this.startTimerUpdates();
         }
-      });
+
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.addedNodes.length) {
+              this.setupProductCardTimers();
+              if (this.activeTimers.size > 0 && !this.updateInterval) {
+                this.startTimerUpdates();
+              }
+            }
+          });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
     }
   };
 
-  // Handle page unload
   window.addEventListener('beforeunload', () => {
     SmartCart.stopTimerUpdates();
   });
 
   // Handle mobile viewport changes
-  let resizeTimeout;
   window.addEventListener('resize', () => {
-    // Debounce resize event
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-      if (SmartCart.stickyCartElement) {
-        SmartCart.createStickyCart();
-      }
-    }, 250); // Wait 250ms after last resize event
+    if (SmartCart.stickyCartElement) {
+      SmartCart.createStickyCart(); // Recreate sticky cart with updated mobile styles
+    }
   });
 
-  // Initialize when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      try {
-        SmartCart.initialize();
-      } catch (error) {
-        console.error('Error initializing SmartCart:', error);
-      }
-    });
+    document.addEventListener('DOMContentLoaded', () => SmartCart.initialize());
   } else {
-    try {
-      SmartCart.initialize();
-    } catch (error) {
-      console.error('Error initializing SmartCart:', error);
-    }
+    SmartCart.initialize();
   }
 })();
