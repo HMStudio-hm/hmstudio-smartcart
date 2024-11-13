@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.6.4
+// src/scripts/smartCart.js v1.6.5
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -477,33 +477,25 @@
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
 
-        let timeUnits = [];
-
-        if (days > 0) {
-          timeUnits.push({
+        // Always include all time units
+        const timeUnits = [
+          {
             value: days,
             label: getCurrentLanguage() === 'ar' ? 'ي' : 'd'
-          });
-        }
-
-        if (hours > 0 || days > 0) {
-          timeUnits.push({
+          },
+          {
             value: hours,
             label: getCurrentLanguage() === 'ar' ? 'س' : 'h'
-          });
-        }
-
-        if (minutes > 0 || hours > 0 || days > 0) {
-          timeUnits.push({
+          },
+          {
             value: minutes,
             label: getCurrentLanguage() === 'ar' ? 'د' : 'm'
-          });
-        }
-
-        timeUnits.push({
-          value: seconds,
-          label: getCurrentLanguage() === 'ar' ? 'ث' : 's'
-        });
+          },
+          {
+            value: seconds,
+            label: getCurrentLanguage() === 'ar' ? 'ث' : 's'
+          }
+        ];
 
         const isCard = id.startsWith('card-');
         const scale = isCard ? (isMobile() ? 0.85 : 1) : 1;
