@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.6.3
+// src/scripts/smartCart.js v1.6.4
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -381,8 +381,9 @@
         align-items: center;
         justify-content: center;
         gap: 4px;
-        font-size: ${isMobile() ? '11px' : '13px'};
+        font-size: ${isMobile() ? '10px' : '12px'};
         width: 100%;
+        overflow: hidden;
       `;
 
       const timeElement = document.createElement('div');
@@ -390,6 +391,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-wrap: wrap;
         gap: ${isMobile() ? '2px' : '4px'};
       `;
 
@@ -409,13 +411,33 @@
         element: timeElement,
         endTime: endTime,
         campaign: campaign,
-        originalDuration: originalDuration
+        originalDuration: originalDuration,
+        isFlashing: false
       });
 
       return container;
     },
 
+    // Add keyframes for flashing animation
+    addFlashingStyleIfNeeded() {
+      if (!document.getElementById('countdown-flash-animation')) {
+        const style = document.createElement('style');
+        style.id = 'countdown-flash-animation';
+        style.textContent = `
+          @keyframes countdown-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+          }
+          .countdown-flash {
+            animation: countdown-flash 1s ease-in-out infinite;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    },
+
     updateAllTimers() {
+      this.addFlashingStyleIfNeeded();
       const now = new Date();
       
       this.activeTimers.forEach((timer, id) => {
@@ -423,14 +445,12 @@
 
         let timeDiff = timer.endTime - now;
 
-        // Handle auto-restart for both product page and card timers
+        // Handle auto-restart
         if (timeDiff <= 0 && timer.campaign?.timerSettings?.autoRestart && timer.originalDuration) {
-          // Calculate new end time based on original duration
           const newEndTime = new Date(now.getTime() + timer.originalDuration);
           timer.endTime = newEndTime;
           timeDiff = timer.originalDuration;
-          
-          // Log restart for debugging
+          timer.isFlashing = false;
           console.log(`Timer restarted for ${id}, new end time:`, newEndTime);
         } else if (timeDiff <= 0 && !timer.campaign?.timerSettings?.autoRestart) {
           const elementId = id.startsWith('card-') ? 
@@ -442,7 +462,16 @@
           return;
         }
 
-        // Format timer display
+        // Check if we're in the last 5 minutes
+        const isLastFiveMinutes = timeDiff <= 300000; // 5 minutes in milliseconds
+
+        // Update flashing state if needed
+        if (isLastFiveMinutes && !timer.isFlashing) {
+          timer.isFlashing = true;
+        } else if (!isLastFiveMinutes && timer.isFlashing) {
+          timer.isFlashing = false;
+        }
+
         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
@@ -476,27 +505,44 @@
           label: getCurrentLanguage() === 'ar' ? 'ث' : 's'
         });
 
-        let html = '';
+        const isCard = id.startsWith('card-');
+        const scale = isCard ? (isMobile() ? 0.85 : 1) : 1;
+        
+        let html = `
+          <div class="countdown-units-wrapper ${timer.isFlashing ? 'countdown-flash' : ''}" style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: ${isCard ? '2px' : '4px'};
+            transform: scale(${scale});
+            flex-wrap: ${isCard ? 'wrap' : 'nowrap'};
+            ${isCard ? 'max-width: 100%; padding: 2px;' : ''}
+          ">
+        `;
+
         timeUnits.forEach((unit, index) => {
           html += `
-            <div class="hmstudio-card-countdown-unit" style="
+            <div class="hmstudio-countdown-unit" style="
               display: inline-flex;
               align-items: center;
-              gap: ${isMobile() ? '1px' : '2px'};
-              ${index < timeUnits.length - 1 ? `margin-${getCurrentLanguage() === 'ar' ? 'left' : 'right'}: ${isMobile() ? '4px' : '8px'};` : ''}
+              white-space: nowrap;
+              gap: ${isCard ? '1px' : '2px'};
+              ${index < timeUnits.length - 1 ? `margin-${getCurrentLanguage() === 'ar' ? 'left' : 'right'}: ${isCard ? '2px' : '4px'};` : ''}
+              ${isCard && index % 2 === 1 ? 'margin-right: 8px;' : ''}
             ">
               <span style="
                 font-weight: bold;
-                min-width: ${isMobile() ? '16px' : '20px'};
+                min-width: ${isCard ? '14px' : '20px'};
                 text-align: center;
+                font-size: ${isCard ? (isMobile() ? '11px' : '12px') : (isMobile() ? '12px' : '14px')};
               ">${String(unit.value).padStart(2, '0')}</span>
               <span style="
-                font-size: ${isMobile() ? '0.8em' : '0.9em'};
+                font-size: ${isCard ? (isMobile() ? '9px' : '10px') : (isMobile() ? '10px' : '12px')};
                 opacity: 0.8;
               ">${unit.label}</span>
               ${index < timeUnits.length - 1 ? `
                 <span style="
-                  margin-${getCurrentLanguage() === 'ar' ? 'right' : 'left'}: ${isMobile() ? '4px' : '8px'};
+                  margin-${getCurrentLanguage() === 'ar' ? 'right' : 'left'}: ${isCard ? '2px' : '4px'};
                   opacity: 0.8;
                 ">:</span>
               ` : ''}
@@ -504,6 +550,7 @@
           `;
         });
 
+        html += '</div>';
         timer.element.innerHTML = html;
       });
     },
