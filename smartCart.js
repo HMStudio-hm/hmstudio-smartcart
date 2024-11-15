@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.6.5
+// src/scripts/smartCart.js v1.6.6
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -95,16 +95,46 @@
       `;
     
       const quantityWrapper = document.createElement('div');
-      quantityWrapper.style.cssText = `
+quantityWrapper.style.cssText = `
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  ${isMobile() ? 'flex: 1; justify-content: space-between;' : ''} /* Make wrapper expand on mobile */
+`;
+      // zdt hadi 3la 9bel quantity selector in the phone 
+      const quantityContainer = document.createElement('div');
+      quantityContainer.style.cssText = `
+        margin: 15px 0;
         display: flex;
         align-items: center;
         gap: 10px;
-        background: #f5f5f5;
-        border-radius: 4px;
-        padding: 4px;
-        ${isMobile() ? 'flex: 0 0 auto;' : ''}
+        ${isMobile() ? 'width: 100%;' : ''} /* Make container full width on mobile */
       `;
-    
+    // zdt hadi 3la 9bel quantity selector in the phone 
+      const quantityLabel = document.createElement('label');
+quantityLabel.textContent = currentLang === 'ar' ? 'الكمية:' : 'Quantity:';
+quantityLabel.style.cssText = `
+  font-weight: bold;
+  color: #333;
+  ${isMobile() ? 'flex: 0 0 auto;' : ''} /* Keep label size fixed on mobile */
+`;
+// Update button styles, zdt hadi 3la 9bel quantity selector in the phone 
+const buttonStyle = `
+  width: ${isMobile() ? '40px' : '32px'};
+  height: ${isMobile() ? '40px' : '32px'};
+  border: none;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0; /* Prevent buttons from shrinking */
+`;
       const decreaseBtn = document.createElement('button');
       decreaseBtn.textContent = '-';
       decreaseBtn.style.cssText = `
