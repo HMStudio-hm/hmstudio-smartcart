@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.6.7
+// src/scripts/smartCart.js v1.6.8
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -77,12 +77,13 @@
         bottom: 0;
         background: white;
         box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-        padding: ${isMobile() ? '12px' : '12px 20px'};
+        padding: ${isMobile() ? '12px' : '20px'};
         z-index: 999999;
         display: none;
         direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+        height: ${isMobile() ? 'auto' : '100px'};  // Added this line
       `;
-    
+
       const wrapper = document.createElement('div');
       wrapper.style.cssText = `
         max-width: 1200px;
@@ -92,6 +93,7 @@
         align-items: center;
         gap: ${isMobile() ? '12px' : '15px'};
         width: 100%;
+        height: ${isMobile() ? 'auto' : '100%'};  // Added this line
       `;
 
       // Quantity section container (for mobile layout)
@@ -248,14 +250,14 @@
         color: white;
         border: none;
         border-radius: 8px;
-        height: ${isMobile() ? '48px' : '40px'};
+        height: ${isMobile() ? '48px' : '60px'};  // Made taller for desktop
         font-weight: 500;
         cursor: pointer;
         white-space: nowrap;
         transition: opacity 0.3s ease;
-        width: ${isMobile() ? '100%' : 'auto'};
+        width: ${isMobile() ? '100%' : '200px'};  // Made wider for desktop
         padding: 0 ${isMobile() ? '20px' : '30px'};
-        font-size: ${isMobile() ? '16px' : '14px'};
+        font-size: ${isMobile() ? '16px' : '16px'};  // Made font bigger for desktop
       `;
 
       addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
