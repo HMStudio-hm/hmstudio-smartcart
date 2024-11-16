@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.7.0
+// src/scripts/smartCart.js v1.7.1
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -89,11 +89,10 @@
         max-width: 1200px;
         margin: 0 auto;
         display: flex;
-        flex-direction: ${isMobile() ? 'column' : 'row'};
         align-items: center;
-        gap: ${isMobile() ? '12px' : '15px'};
-        width: 100%;
-        height: ${isMobile() ? 'auto' : '100%'};  // Added this line
+        justify-content: space-between;
+        gap: ${isMobile() ? '8px' : '15px'};
+        flex-wrap: ${isMobile() ? 'wrap' : 'nowrap'};
       `;
 
       // Quantity section container (for mobile layout)
@@ -121,11 +120,11 @@
       quantityWrapper.style.cssText = `
         display: flex;
         align-items: center;
-        gap: ${isMobile() ? '12px' : '8px'};
-        ${isMobile() ? 'flex: 1;' : ''};
-        background: white;
-        border-radius: 6px;
+        gap: 10px;
+        background: #f5f5f5;
+        border-radius: 4px;
         padding: 4px;
+        ${isMobile() ? 'flex: 0 0 auto;' : ''}
       `;
       const decreaseBtn = document.createElement('button');
       decreaseBtn.textContent = '-';
