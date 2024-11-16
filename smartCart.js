@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.7.1
+// src/scripts/smartCart.js v1.7.2
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -309,6 +309,48 @@
           container.style.display = 'none';
         }
       });
+    },
+
+    // Add new methods for categories
+    async getCategories() {
+      try {
+        const response = await zid.store.product.fetchCategories();
+        if (response.status === 'success') {
+          return response.data.categories || [];
+        }
+        return [];
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        return [];
+      }
+    },
+
+    async getProductsByCategory(categoryId, page = 1, searchTerm = '') {
+      try {
+        const query = {
+          page: page,
+          per_page: 10,
+          search: searchTerm,
+          sort_by: 'created_at',
+          order: 'desc'
+        };
+
+        const response = await zid.store.product.fetchAll(categoryId, query);
+        if (response.status === 'success') {
+          return {
+            products: response.data.products,
+            pagination: {
+              total: response.data.total,
+              current_page: response.data.current_page,
+              last_page: response.data.last_page
+            }
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error('Error fetching products by category:', error);
+        return null;
+      }
     },
 
     findActiveCampaignForProduct(productId) {
@@ -778,6 +820,12 @@
   window.addEventListener('beforeunload', () => {
     SmartCart.stopTimerUpdates();
   });
+
+  // Expose these methods globally
+  window.HMStudioSmartCart = {
+    getCategories: SmartCart.getCategories.bind(SmartCart),
+    getProductsByCategory: SmartCart.getProductsByCategory.bind(SmartCart)
+  };
 
   // Handle mobile viewport changes
   window.addEventListener('resize', () => {
