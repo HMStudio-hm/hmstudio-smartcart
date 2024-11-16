@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.6.6
+// src/scripts/smartCart.js v1.6.7
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -61,7 +61,7 @@
     currentProductId: null,
     activeTimers: new Map(),
     updateInterval: null,
-    originalDurations: new Map(), // Store original durations for auto-restart
+    originalDurations: new Map(),
 
     createStickyCart() {
       if (this.stickyCartElement) {
@@ -77,7 +77,7 @@
         bottom: 0;
         background: white;
         box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-        padding: ${isMobile() ? '8px 12px' : '12px 20px'};
+        padding: ${isMobile() ? '12px' : '12px 20px'};
         z-index: 999999;
         display: none;
         direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
@@ -88,67 +88,60 @@
         max-width: 1200px;
         margin: 0 auto;
         display: flex;
+        flex-direction: ${isMobile() ? 'column' : 'row'};
         align-items: center;
-        justify-content: space-between;
-        gap: ${isMobile() ? '8px' : '15px'};
-        flex-wrap: ${isMobile() ? 'wrap' : 'nowrap'};
+        gap: ${isMobile() ? '12px' : '15px'};
+        width: 100%;
       `;
-    
-      const quantityWrapper = document.createElement('div');
-quantityWrapper.style.cssText = `
-  display: flex;
-  align-items: center;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  overflow: hidden;
-  ${isMobile() ? 'flex: 1; justify-content: space-between;' : ''} /* Make wrapper expand on mobile */
-`;
-      // zdt hadi 3la 9bel quantity selector in the phone 
+
+      // Quantity section container (for mobile layout)
       const quantityContainer = document.createElement('div');
       quantityContainer.style.cssText = `
-        margin: 15px 0;
         display: flex;
         align-items: center;
         gap: 10px;
-        ${isMobile() ? 'width: 100%;' : ''} /* Make container full width on mobile */
+        width: ${isMobile() ? '100%' : 'auto'};
+        background: #f8f8f8;
+        border-radius: 8px;
+        padding: ${isMobile() ? '8px 12px' : '4px'};
       `;
-    // zdt hadi 3la 9bel quantity selector in the phone 
-      const quantityLabel = document.createElement('label');
-quantityLabel.textContent = currentLang === 'ar' ? 'الكمية:' : 'Quantity:';
-quantityLabel.style.cssText = `
-  font-weight: bold;
-  color: #333;
-  ${isMobile() ? 'flex: 0 0 auto;' : ''} /* Keep label size fixed on mobile */
-`;
-// Update button styles, zdt hadi 3la 9bel quantity selector in the phone 
-const buttonStyle = `
-  width: ${isMobile() ? '40px' : '32px'};
-  height: ${isMobile() ? '40px' : '32px'};
-  border: none;
-  background: #f5f5f5;
-  cursor: pointer;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #333;
-  transition: background-color 0.3s ease;
-  flex-shrink: 0; /* Prevent buttons from shrinking */
-`;
+
+      // Optional: Add quantity label
+      const quantityLabel = document.createElement('span');
+      quantityLabel.textContent = getCurrentLanguage() === 'ar' ? 'الكمية:' : 'Quantity:';
+      quantityLabel.style.cssText = `
+        font-size: ${isMobile() ? '14px' : '12px'};
+        color: #666;
+        ${isMobile() ? 'min-width: 60px;' : ''}
+      `;
+
+      const quantityWrapper = document.createElement('div');
+      quantityWrapper.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: ${isMobile() ? '12px' : '8px'};
+        ${isMobile() ? 'flex: 1;' : ''};
+        background: white;
+        border-radius: 6px;
+        padding: 4px;
+      `;
       const decreaseBtn = document.createElement('button');
       decreaseBtn.textContent = '-';
       decreaseBtn.style.cssText = `
-        width: ${isMobile() ? '24px' : '28px'};
-        height: ${isMobile() ? '24px' : '28px'};
+        width: ${isMobile() ? '40px' : '28px'};
+        height: ${isMobile() ? '40px' : '28px'};
         display: flex;
         align-items: center;
         justify-content: center;
-        background: white;
+        background: #f8f8f8;
         border: 1px solid #e5e5e5;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
-        font-size: ${isMobile() ? '14px' : '16px'};
+        font-size: ${isMobile() ? '18px' : '16px'};
+        color: #666;
+        transition: all 0.2s ease;
         user-select: none;
+        flex-shrink: 0;
       `;
     
       const quantityInput = document.createElement('input');
@@ -157,31 +150,57 @@ const buttonStyle = `
       quantityInput.max = '10';
       quantityInput.value = '1';
       quantityInput.style.cssText = `
-        width: ${isMobile() ? '36px' : '40px'};
+        width: ${isMobile() ? '60px' : '40px'};
+        height: ${isMobile() ? '40px' : '28px'};
         text-align: center;
-        border: none;
-        background: transparent;
-        font-size: ${isMobile() ? '13px' : '14px'};
+        border: 1px solid #e5e5e5;
+        border-radius: 6px;
+        background: white;
+        font-size: ${isMobile() ? '16px' : '14px'};
         -moz-appearance: textfield;
         -webkit-appearance: none;
-        margin: 0 5px;
+        margin: 0;
+        padding: 0;
+        ${isMobile() ? 'flex: 0 0 60px;' : ''};
       `;
     
       const increaseBtn = document.createElement('button');
       increaseBtn.textContent = '+';
       increaseBtn.style.cssText = `
-        width: ${isMobile() ? '24px' : '28px'};
-        height: ${isMobile() ? '24px' : '28px'};
+        width: ${isMobile() ? '40px' : '28px'};
+        height: ${isMobile() ? '40px' : '28px'};
         display: flex;
         align-items: center;
         justify-content: center;
-        background: white;
+        background: #f8f8f8;
         border: 1px solid #e5e5e5;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
-        font-size: ${isMobile() ? '14px' : '16px'};
+        font-size: ${isMobile() ? '18px' : '16px'};
+        color: #666;
+        transition: all 0.2s ease;
         user-select: none;
+        flex-shrink: 0;
       `;
+    
+      // Add hover effects to buttons
+      const addButtonHoverEffects = (button) => {
+        button.addEventListener('mouseover', () => {
+          button.style.background = '#f0f0f0';
+        });
+        button.addEventListener('mouseout', () => {
+          button.style.background = '#f8f8f8';
+        });
+        button.addEventListener('mousedown', () => {
+          button.style.background = '#e8e8e8';
+        });
+        button.addEventListener('mouseup', () => {
+          button.style.background = '#f0f0f0';
+        });
+      };
+
+      addButtonHoverEffects(decreaseBtn);
+      addButtonHoverEffects(increaseBtn);
     
       const updateQuantity = (value) => {
         quantityInput.value = value;
@@ -213,6 +232,14 @@ const buttonStyle = `
         if (value > 10) value = 10;
         updateQuantity(value);
       });
+
+      // Prevent scrolling when focusing input on mobile
+      quantityInput.addEventListener('focus', (e) => {
+        e.preventDefault();
+        if (isMobile()) {
+          quantityInput.blur();
+        }
+      });
     
       const addButton = document.createElement('button');
       addButton.textContent = getCurrentLanguage() === 'ar' ? 'أضف للسلة' : 'Add to Cart';
@@ -220,17 +247,17 @@ const buttonStyle = `
         background-color: var(--theme-primary, #00b286);
         color: white;
         border: none;
-        border-radius: 4px;
-        padding: 0 ${isMobile() ? '15px' : '30px'};
-        height: ${isMobile() ? '36px' : '40px'};
+        border-radius: 8px;
+        height: ${isMobile() ? '48px' : '40px'};
         font-weight: 500;
         cursor: pointer;
         white-space: nowrap;
         transition: opacity 0.3s ease;
-        flex-grow: 1;
-        font-size: ${isMobile() ? '13px' : '14px'};
-        ${isMobile() ? 'width: 100%;' : ''}
+        width: ${isMobile() ? '100%' : 'auto'};
+        padding: 0 ${isMobile() ? '20px' : '30px'};
+        font-size: ${isMobile() ? '16px' : '14px'};
       `;
+
       addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
       addButton.addEventListener('mouseout', () => addButton.style.opacity = '1');
       addButton.addEventListener('click', () => {
@@ -248,18 +275,22 @@ const buttonStyle = `
           }, 100);
         }
       });
-    
+
+      // Assemble the quantity section
       quantityWrapper.appendChild(decreaseBtn);
       quantityWrapper.appendChild(quantityInput);
       quantityWrapper.appendChild(increaseBtn);
+      quantityContainer.appendChild(quantityLabel);
+      quantityContainer.appendChild(quantityWrapper);
     
-      wrapper.appendChild(quantityWrapper);
+      // Assemble the final structure
+      wrapper.appendChild(quantityContainer);
       wrapper.appendChild(addButton);
       container.appendChild(wrapper);
       document.body.appendChild(container);
     
       this.stickyCartElement = container;
-    
+      // Add scroll event listener
       window.addEventListener('scroll', () => {
         const originalButton = document.querySelector('.btn.btn-add-to-cart');
         const originalSelect = document.querySelector('select#product-quantity');
@@ -302,7 +333,6 @@ const buttonStyle = `
           return false;
         }
 
-        // Store original duration when finding active campaign
         if (hasProduct && !this.originalDurations.has(campaign.id)) {
           const startTime = campaign.startTime?._seconds ? 
             new Date(campaign.startTime._seconds * 1000) :
@@ -690,7 +720,7 @@ const buttonStyle = `
         const wishlistBtn = document.querySelector('[data-wishlist-id]');
         const productForm = document.querySelector('form[data-product-id]');
         const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
-                         productForm?.getAttribute('data-product-id');
+                       productForm?.getAttribute('data-product-id');
 
         if (productId) {
           const activeCampaign = this.findActiveCampaignForProduct(productId);
