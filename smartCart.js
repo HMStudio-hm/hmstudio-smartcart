@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.6.9
+// src/scripts/smartCart.js v1.7.0
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -255,9 +255,7 @@
         cursor: pointer;
         white-space: nowrap;
         transition: opacity 0.3s ease;
-        flex: ${isMobile() ? 'none' : '1'};  // This makes it stretch in desktop
-        width: ${isMobile() ? '100%' : 'auto'};  // Changed to auto for desktop
-        padding: 0 ${isMobile() ? '20px' : '30px'};
+        flex: 1;  // Make it stretch in both mobile and desktop
         font-size: ${isMobile() ? '16px' : '16px'};
       `;
 
