@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.6.8
+// src/scripts/smartCart.js v1.6.9
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -250,14 +250,15 @@
         color: white;
         border: none;
         border-radius: 8px;
-        height: ${isMobile() ? '48px' : '60px'};  // Made taller for desktop
+        height: ${isMobile() ? '48px' : '60px'};
         font-weight: 500;
         cursor: pointer;
         white-space: nowrap;
         transition: opacity 0.3s ease;
-        width: ${isMobile() ? '100%' : '200px'};  // Made wider for desktop
+        flex: ${isMobile() ? 'none' : '1'};  // This makes it stretch in desktop
+        width: ${isMobile() ? '100%' : 'auto'};  // Changed to auto for desktop
         padding: 0 ${isMobile() ? '20px' : '30px'};
-        font-size: ${isMobile() ? '16px' : '16px'};  // Made font bigger for desktop
+        font-size: ${isMobile() ? '16px' : '16px'};
       `;
 
       addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
