@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.7.3
+// src/scripts/smartCart.js v1.7.4
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -39,6 +39,46 @@
         return [];
     }
   }
+
+  // Add this at the top of your smartCart.js file, after the initial console.log
+const Analytics = {
+  async trackEvent(eventType, data) {
+    try {
+      console.log('Starting Smart Cart stats tracking for event:', eventType);
+      
+      const timestamp = new Date();
+      const month = timestamp.toISOString().slice(0, 7); // Format: "2024-11"
+
+      const eventData = {
+        storeId,  // This is available from your getStoreIdFromUrl()
+        eventType,
+        timestamp: timestamp.toISOString(),
+        month,
+        ...data
+      };
+
+      console.log('Sending Smart Cart stats data:', eventData);
+
+      const response = await fetch(`https://europe-west3-hmstudio-85f42.cloudfunctions.net/trackSmartCartStats`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData)
+      });
+
+      const responseData = await response.json();
+      console.log('Smart Cart stats response:', responseData);
+
+      if (!response.ok) {
+        throw new Error(`Smart Cart stats tracking failed: ${responseData.error || response.statusText}`);
+      }
+
+    } catch (error) {
+      console.error('Smart Cart stats tracking error:', error);
+    }
+  }
+};
 
   function getCurrentLanguage() {
     return document.documentElement.lang || 'ar';
@@ -271,11 +311,22 @@
         const originalButton = document.querySelector('.btn.btn-add-to-cart');
         if (originalButton) {
           try {
+            // Get product details from the form
+            const form = document.getElementById('product-form');
+            const productId = form.querySelector('input[name="product_id"]')?.value;
+            const quantity = parseInt(quantityInput.value);
+      
+            // Get product name if available
+            const productNameElement = document.querySelector('.product-title, .product-name, h1.product-formatted-title');
+            const productName = productNameElement?.textContent?.trim() || '';
+      
             // Track sticky cart addition
             await Analytics.trackEvent('cart_add', {
-              productId: formData.get('product_id'),
-              quantity: parseInt(quantityInput.value),
-              source: 'sticky'
+              productId,
+              quantity,
+              productName,
+              source: 'sticky',
+              price: parseFloat(form.getAttribute('data-price') || '0')
             });
           } catch (trackingError) {
             console.warn('Sticky cart analytics tracking error:', trackingError);
