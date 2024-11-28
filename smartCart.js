@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.7.4
+// src/scripts/smartCart.js v1.7.5
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -309,25 +309,39 @@ const Analytics = {
         }
       
         const originalButton = document.querySelector('.btn.btn-add-to-cart');
-        if (originalButton) {
+        const form = document.getElementById('product-form');
+        
+        if (originalButton && form) {
           try {
-            // Get product details from the form
-            const form = document.getElementById('product-form');
-            const productId = form.querySelector('input[name="product_id"]')?.value;
-            const quantity = parseInt(quantityInput.value);
+            // Get product ID - try multiple selectors
+            const productIdInput = form.querySelector('input[name="product_id"]');
+            const productId = productIdInput ? productIdInput.value : null;
       
-            // Get product name if available
-            const productNameElement = document.querySelector('.product-title, .product-name, h1.product-formatted-title');
-            const productName = productNameElement?.textContent?.trim() || '';
+            // Get product name
+            const productNameElement = document.querySelector('h1.product-formatted-title, .product-title');
+            const productName = productNameElement ? productNameElement.textContent.trim() : '';
       
-            // Track sticky cart addition
-            await Analytics.trackEvent('cart_add', {
-              productId,
-              quantity,
-              productName,
-              source: 'sticky',
-              price: parseFloat(form.getAttribute('data-price') || '0')
-            });
+            // Get price - try multiple approaches
+            let price = 0;
+            const priceElement = document.querySelector('.product-formatted-price');
+            if (priceElement) {
+              // Remove currency symbols and convert to number
+              const priceText = priceElement.textContent.replace(/[^0-9.,]/g, '').replace(',', '.');
+              price = parseFloat(priceText);
+            }
+      
+            // Only track if we have the required data
+            if (productId && price) {
+              await Analytics.trackEvent('cart_add', {
+                productId,
+                productName,
+                price,
+                quantity: parseInt(quantityInput.value),
+                source: 'sticky'
+              });
+            } else {
+              console.warn('Missing required product data:', { productId, price });
+            }
           } catch (trackingError) {
             console.warn('Sticky cart analytics tracking error:', trackingError);
           }
