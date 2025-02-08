@@ -1,97 +1,54 @@
-// src/scripts/smartCart.js v1.7.5
+// src/scripts/smartCart.js v1.7.6
 // HMStudio Smart Cart with Campaign Support
+// the logs cleaned up version(from v1.7.1 last and not logs cleaned up)
 
-(function() {
-  console.log('Smart Cart script initialized');
 
+;(() => {
   function getStoreIdFromUrl() {
-    const scriptTag = document.currentScript;
-    const scriptUrl = new URL(scriptTag.src);
-    const storeId = scriptUrl.searchParams.get('storeId');
-    return storeId ? storeId.split('?')[0] : null;
+    const scriptTag = document.currentScript
+    const scriptUrl = new URL(scriptTag.src)
+    const storeId = scriptUrl.searchParams.get("storeId")
+    return storeId ? storeId.split("?")[0] : null
   }
 
   function getCampaignsFromUrl() {
-    const scriptTag = document.currentScript;
-    const scriptUrl = new URL(scriptTag.src);
-    const campaignsData = scriptUrl.searchParams.get('campaigns');
-    
+    const scriptTag = document.currentScript
+    const scriptUrl = new URL(scriptTag.src)
+    const campaignsData = scriptUrl.searchParams.get("campaigns")
+
     if (!campaignsData) {
-        console.log('No campaigns data found in URL');
-        return [];
+      return []
     }
 
     try {
-        const decodedData = atob(campaignsData);
-        const parsedData = JSON.parse(decodedData);
-        
-        return parsedData.map(campaign => ({
-            ...campaign,
-            timerSettings: {
-                ...campaign.timerSettings,
-                textAr: decodeURIComponent(campaign.timerSettings.textAr || ''),
-                textEn: decodeURIComponent(campaign.timerSettings.textEn || ''),
-                autoRestart: campaign.timerSettings.autoRestart || false
-            }
-        }));
-    } catch (error) {
-        console.error('Error parsing campaigns data:', error);
-        return [];
-    }
-  }
+      const decodedData = atob(campaignsData)
+      const parsedData = JSON.parse(decodedData)
 
-  // Add this at the top of your smartCart.js file, after the initial console.log
-const Analytics = {
-  async trackEvent(eventType, data) {
-    try {
-      console.log('Starting Smart Cart stats tracking for event:', eventType);
-      
-      const timestamp = new Date();
-      const month = timestamp.toISOString().slice(0, 7); // Format: "2024-11"
-
-      const eventData = {
-        storeId,  // This is available from your getStoreIdFromUrl()
-        eventType,
-        timestamp: timestamp.toISOString(),
-        month,
-        ...data
-      };
-
-      console.log('Sending Smart Cart stats data:', eventData);
-
-      const response = await fetch(`https://europe-west3-hmstudio-85f42.cloudfunctions.net/trackSmartCartStats`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      return parsedData.map((campaign) => ({
+        ...campaign,
+        timerSettings: {
+          ...campaign.timerSettings,
+          textAr: decodeURIComponent(campaign.timerSettings.textAr || ""),
+          textEn: decodeURIComponent(campaign.timerSettings.textEn || ""),
+          autoRestart: campaign.timerSettings.autoRestart || false,
         },
-        body: JSON.stringify(eventData)
-      });
-
-      const responseData = await response.json();
-      console.log('Smart Cart stats response:', responseData);
-
-      if (!response.ok) {
-        throw new Error(`Smart Cart stats tracking failed: ${responseData.error || response.statusText}`);
-      }
-
+      }))
     } catch (error) {
-      console.error('Smart Cart stats tracking error:', error);
+      return []
     }
   }
-};
 
   function getCurrentLanguage() {
-    return document.documentElement.lang || 'ar';
+    return document.documentElement.lang || "ar"
   }
 
   function isMobile() {
-    return window.innerWidth <= 768;
+    return window.innerWidth <= 768
   }
 
-  const storeId = getStoreIdFromUrl();
+  const storeId = getStoreIdFromUrl()
   if (!storeId) {
-    console.error('Store ID not found in script URL');
-    return;
+    return
   }
 
   const SmartCart = {
@@ -105,11 +62,11 @@ const Analytics = {
 
     createStickyCart() {
       if (this.stickyCartElement) {
-        this.stickyCartElement.remove();
+        this.stickyCartElement.remove()
       }
-    
-      const container = document.createElement('div');
-      container.id = 'hmstudio-sticky-cart';
+
+      const container = document.createElement("div")
+      container.id = "hmstudio-sticky-cart"
       container.style.cssText = `
         position: fixed;
         left: 0;
@@ -117,46 +74,44 @@ const Analytics = {
         bottom: 0;
         background: white;
         box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-        padding: ${isMobile() ? '12px' : '20px'};
+        padding: ${isMobile() ? "12px" : "20px"};
         z-index: 999999;
         display: none;
-        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
-        height: ${isMobile() ? 'auto' : '100px'};  // Added this line
-      `;
+        direction: ${getCurrentLanguage() === "ar" ? "rtl" : "ltr"};
+        height: ${isMobile() ? "auto" : "100px"};
+      `
 
-      const wrapper = document.createElement('div');
+      const wrapper = document.createElement("div")
       wrapper.style.cssText = `
         max-width: 1200px;
         margin: 0 auto;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: ${isMobile() ? '8px' : '15px'};
-        flex-wrap: ${isMobile() ? 'wrap' : 'nowrap'};
-      `;
+        gap: ${isMobile() ? "8px" : "15px"};
+        flex-wrap: ${isMobile() ? "wrap" : "nowrap"};
+      `
 
-      // Quantity section container (for mobile layout)
-      const quantityContainer = document.createElement('div');
+      const quantityContainer = document.createElement("div")
       quantityContainer.style.cssText = `
         display: flex;
         align-items: center;
         gap: 10px;
-        width: ${isMobile() ? '100%' : 'auto'};
+        width: ${isMobile() ? "100%" : "auto"};
         background: #f8f8f8;
         border-radius: 8px;
-        padding: ${isMobile() ? '8px 12px' : '4px'};
-      `;
+        padding: ${isMobile() ? "8px 12px" : "4px"};
+      `
 
-      // Optional: Add quantity label
-      const quantityLabel = document.createElement('span');
-      quantityLabel.textContent = getCurrentLanguage() === 'ar' ? 'الكمية:' : 'Quantity:';
+      const quantityLabel = document.createElement("span")
+      quantityLabel.textContent = getCurrentLanguage() === "ar" ? "الكمية:" : "Quantity:"
       quantityLabel.style.cssText = `
-        font-size: ${isMobile() ? '14px' : '12px'};
+        font-size: ${isMobile() ? "14px" : "12px"};
         color: #666;
-        ${isMobile() ? 'min-width: 60px;' : ''}
-      `;
+        ${isMobile() ? "min-width: 60px;" : ""}
+      `
 
-      const quantityWrapper = document.createElement('div');
+      const quantityWrapper = document.createElement("div")
       quantityWrapper.style.cssText = `
         display: flex;
         align-items: center;
@@ -164,13 +119,13 @@ const Analytics = {
         background: #f5f5f5;
         border-radius: 4px;
         padding: 4px;
-        ${isMobile() ? 'flex: 0 0 auto;' : ''}
-      `;
-      const decreaseBtn = document.createElement('button');
-      decreaseBtn.textContent = '-';
+        ${isMobile() ? "flex: 0 0 auto;" : ""}
+      `
+      const decreaseBtn = document.createElement("button")
+      decreaseBtn.textContent = "-"
       decreaseBtn.style.cssText = `
-        width: ${isMobile() ? '40px' : '28px'};
-        height: ${isMobile() ? '40px' : '28px'};
+        width: ${isMobile() ? "40px" : "28px"};
+        height: ${isMobile() ? "40px" : "28px"};
         display: flex;
         align-items: center;
         justify-content: center;
@@ -178,38 +133,38 @@ const Analytics = {
         border: 1px solid #e5e5e5;
         border-radius: 6px;
         cursor: pointer;
-        font-size: ${isMobile() ? '18px' : '16px'};
+        font-size: ${isMobile() ? "18px" : "16px"};
         color: #666;
         transition: all 0.2s ease;
         user-select: none;
         flex-shrink: 0;
-      `;
-    
-      const quantityInput = document.createElement('input');
-      quantityInput.type = 'number';
-      quantityInput.min = '1';
-      quantityInput.max = '10';
-      quantityInput.value = '1';
+      `
+
+      const quantityInput = document.createElement("input")
+      quantityInput.type = "number"
+      quantityInput.min = "1"
+      quantityInput.max = "10"
+      quantityInput.value = "1"
       quantityInput.style.cssText = `
-        width: ${isMobile() ? '60px' : '40px'};
-        height: ${isMobile() ? '40px' : '28px'};
+        width: ${isMobile() ? "60px" : "40px"};
+        height: ${isMobile() ? "40px" : "28px"};
         text-align: center;
         border: 1px solid #e5e5e5;
         border-radius: 6px;
         background: white;
-        font-size: ${isMobile() ? '16px' : '14px'};
+        font-size: ${isMobile() ? "16px" : "14px"};
         -moz-appearance: textfield;
         -webkit-appearance: none;
         margin: 0;
         padding: 0;
-        ${isMobile() ? 'flex: 0 0 60px;' : ''};
-      `;
-    
-      const increaseBtn = document.createElement('button');
-      increaseBtn.textContent = '+';
+        ${isMobile() ? "flex: 0 0 60px;" : ""};
+      `
+
+      const increaseBtn = document.createElement("button")
+      increaseBtn.textContent = "+"
       increaseBtn.style.cssText = `
-        width: ${isMobile() ? '40px' : '28px'};
-        height: ${isMobile() ? '40px' : '28px'};
+        width: ${isMobile() ? "40px" : "28px"};
+        height: ${isMobile() ? "40px" : "28px"};
         display: flex;
         align-items: center;
         justify-content: center;
@@ -217,257 +172,214 @@ const Analytics = {
         border: 1px solid #e5e5e5;
         border-radius: 6px;
         cursor: pointer;
-        font-size: ${isMobile() ? '18px' : '16px'};
+        font-size: ${isMobile() ? "18px" : "16px"};
         color: #666;
         transition: all 0.2s ease;
         user-select: none;
         flex-shrink: 0;
-      `;
-    
-      // Add hover effects to buttons
+      `
+
       const addButtonHoverEffects = (button) => {
-        button.addEventListener('mouseover', () => {
-          button.style.background = '#f0f0f0';
-        });
-        button.addEventListener('mouseout', () => {
-          button.style.background = '#f8f8f8';
-        });
-        button.addEventListener('mousedown', () => {
-          button.style.background = '#e8e8e8';
-        });
-        button.addEventListener('mouseup', () => {
-          button.style.background = '#f0f0f0';
-        });
-      };
+        button.addEventListener("mouseover", () => {
+          button.style.background = "#f0f0f0"
+        })
+        button.addEventListener("mouseout", () => {
+          button.style.background = "#f8f8f8"
+        })
+        button.addEventListener("mousedown", () => {
+          button.style.background = "#e8e8e8"
+        })
+        button.addEventListener("mouseup", () => {
+          button.style.background = "#f0f0f0"
+        })
+      }
 
-      addButtonHoverEffects(decreaseBtn);
-      addButtonHoverEffects(increaseBtn);
-    
+      addButtonHoverEffects(decreaseBtn)
+      addButtonHoverEffects(increaseBtn)
+
       const updateQuantity = (value) => {
-        quantityInput.value = value;
-        const originalSelect = document.querySelector('select#product-quantity');
+        quantityInput.value = value
+        const originalSelect = document.querySelector("select#product-quantity")
         if (originalSelect) {
-          originalSelect.value = value;
-          const event = new Event('change', { bubbles: true });
-          originalSelect.dispatchEvent(event);
+          originalSelect.value = value
+          const event = new Event("change", { bubbles: true })
+          originalSelect.dispatchEvent(event)
         }
-      };
-    
-      decreaseBtn.addEventListener('click', () => {
-        const currentValue = parseInt(quantityInput.value);
-        if (currentValue > 1) {
-          updateQuantity(currentValue - 1);
-        }
-      });
-    
-      increaseBtn.addEventListener('click', () => {
-        const currentValue = parseInt(quantityInput.value);
-        if (currentValue < 10) {
-          updateQuantity(currentValue + 1);
-        }
-      });
-    
-      quantityInput.addEventListener('change', (e) => {
-        let value = parseInt(e.target.value);
-        if (isNaN(value) || value < 1) value = 1;
-        if (value > 10) value = 10;
-        updateQuantity(value);
-      });
+      }
 
-      // Prevent scrolling when focusing input on mobile
-      quantityInput.addEventListener('focus', (e) => {
-        e.preventDefault();
-        if (isMobile()) {
-          quantityInput.blur();
+      decreaseBtn.addEventListener("click", () => {
+        const currentValue = Number.parseInt(quantityInput.value)
+        if (currentValue > 1) {
+          updateQuantity(currentValue - 1)
         }
-      });
-    
-      const addButton = document.createElement('button');
-      addButton.textContent = getCurrentLanguage() === 'ar' ? 'أضف للسلة' : 'Add to Cart';
+      })
+
+      increaseBtn.addEventListener("click", () => {
+        const currentValue = Number.parseInt(quantityInput.value)
+        if (currentValue < 10) {
+          updateQuantity(currentValue + 1)
+        }
+      })
+
+      quantityInput.addEventListener("change", (e) => {
+        let value = Number.parseInt(e.target.value)
+        if (isNaN(value) || value < 1) value = 1
+        if (value > 10) value = 10
+        updateQuantity(value)
+      })
+
+      quantityInput.addEventListener("focus", (e) => {
+        e.preventDefault()
+        if (isMobile()) {
+          quantityInput.blur()
+        }
+      })
+
+      const addButton = document.createElement("button")
+      addButton.textContent = getCurrentLanguage() === "ar" ? "أضف للسلة" : "Add to Cart"
       addButton.style.cssText = `
         background-color: var(--theme-primary, #00b286);
         color: white;
         border: none;
         border-radius: 8px;
-        height: ${isMobile() ? '48px' : '60px'};
+        height: ${isMobile() ? "48px" : "60px"};
         font-weight: 500;
         cursor: pointer;
         white-space: nowrap;
         transition: opacity 0.3s ease;
-        flex: 1;  // Make it stretch in both mobile and desktop
-        font-size: ${isMobile() ? '16px' : '16px'};
-      `;
+        flex: 1;
+        font-size: ${isMobile() ? "16px" : "16px"};
+      `
 
-      addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
-      addButton.addEventListener('mouseout', () => addButton.style.opacity = '1');
-      addButton.addEventListener('click', async () => {
-        const originalSelect = document.querySelector('select#product-quantity');
+      addButton.addEventListener("mouseover", () => (addButton.style.opacity = "0.9"))
+      addButton.addEventListener("mouseout", () => (addButton.style.opacity = "1"))
+      addButton.addEventListener("click", () => {
+        const originalSelect = document.querySelector("select#product-quantity")
         if (originalSelect) {
-          originalSelect.value = quantityInput.value;
-          const event = new Event('change', { bubbles: true });
-          originalSelect.dispatchEvent(event);
+          originalSelect.value = quantityInput.value
+          const event = new Event("change", { bubbles: true })
+          originalSelect.dispatchEvent(event)
         }
-      
-        const originalButton = document.querySelector('.btn.btn-add-to-cart');
-        const form = document.getElementById('product-form');
-        
-        if (originalButton && form) {
-          try {
-            // Get product ID - try multiple selectors
-            const productIdInput = form.querySelector('input[name="product_id"]');
-            const productId = productIdInput ? productIdInput.value : null;
-      
-            // Get product name
-            const productNameElement = document.querySelector('h1.product-formatted-title, .product-title');
-            const productName = productNameElement ? productNameElement.textContent.trim() : '';
-      
-            // Get price - try multiple approaches
-            let price = 0;
-            const priceElement = document.querySelector('.product-formatted-price');
-            if (priceElement) {
-              // Remove currency symbols and convert to number
-              const priceText = priceElement.textContent.replace(/[^0-9.,]/g, '').replace(',', '.');
-              price = parseFloat(priceText);
-            }
-      
-            // Only track if we have the required data
-            if (productId && price) {
-              await Analytics.trackEvent('cart_add', {
-                productId,
-                productName,
-                price,
-                quantity: parseInt(quantityInput.value),
-                source: 'sticky'
-              });
-            } else {
-              console.warn('Missing required product data:', { productId, price });
-            }
-          } catch (trackingError) {
-            console.warn('Sticky cart analytics tracking error:', trackingError);
-          }
-      
-          setTimeout(() => {
-            originalButton.click();
-          }, 100);
-        }
-      });
 
-      // Assemble the quantity section
-      quantityWrapper.appendChild(decreaseBtn);
-      quantityWrapper.appendChild(quantityInput);
-      quantityWrapper.appendChild(increaseBtn);
-      quantityContainer.appendChild(quantityLabel);
-      quantityContainer.appendChild(quantityWrapper);
-    
-      // Assemble the final structure
-      wrapper.appendChild(quantityContainer);
-      wrapper.appendChild(addButton);
-      container.appendChild(wrapper);
-      document.body.appendChild(container);
-    
-      this.stickyCartElement = container;
-      // Add scroll event listener
-      window.addEventListener('scroll', () => {
-        const originalButton = document.querySelector('.btn.btn-add-to-cart');
-        const originalSelect = document.querySelector('select#product-quantity');
-        
-        if (!originalButton) return;
-    
-        const buttonRect = originalButton.getBoundingClientRect();
-        const isButtonVisible = buttonRect.top >= 0 && buttonRect.bottom <= window.innerHeight;
-        
+        const originalButton = document.querySelector(".btn.btn-add-to-cart")
+        if (originalButton) {
+          setTimeout(() => {
+            originalButton.click()
+          }, 100)
+        }
+      })
+
+      quantityWrapper.appendChild(decreaseBtn)
+      quantityWrapper.appendChild(quantityInput)
+      quantityWrapper.appendChild(increaseBtn)
+      quantityContainer.appendChild(quantityLabel)
+      quantityContainer.appendChild(quantityWrapper)
+
+      wrapper.appendChild(quantityContainer)
+      wrapper.appendChild(addButton)
+      container.appendChild(wrapper)
+      document.body.appendChild(container)
+
+      this.stickyCartElement = container
+      window.addEventListener("scroll", () => {
+        const originalButton = document.querySelector(".btn.btn-add-to-cart")
+        const originalSelect = document.querySelector("select#product-quantity")
+
+        if (!originalButton) return
+
+        const buttonRect = originalButton.getBoundingClientRect()
+        const isButtonVisible = buttonRect.top >= 0 && buttonRect.bottom <= window.innerHeight
+
         if (!isButtonVisible) {
-          container.style.display = 'block';
+          container.style.display = "block"
           if (originalSelect) {
-            quantityInput.value = originalSelect.value;
+            quantityInput.value = originalSelect.value
           }
         } else {
-          container.style.display = 'none';
+          container.style.display = "none"
         }
-      });
+      })
     },
 
     findActiveCampaignForProduct(productId) {
-      const now = new Date();
-      const activeCampaign = this.campaigns.find(campaign => {
+      const now = new Date()
+      const activeCampaign = this.campaigns.find((campaign) => {
         if (!campaign.products || !Array.isArray(campaign.products)) {
-          return false;
+          return false
         }
 
-        const hasProduct = campaign.products.some(p => p.id === productId);
-        
-        let endTime;
+        const hasProduct = campaign.products.some((p) => p.id === productId)
+
+        let endTime
         try {
-          endTime = campaign.endTime?._seconds ? 
-            new Date(campaign.endTime._seconds * 1000) :
-            new Date(campaign.endTime.seconds * 1000);
+          endTime = campaign.endTime?._seconds
+            ? new Date(campaign.endTime._seconds * 1000)
+            : new Date(campaign.endTime.seconds * 1000)
         } catch (error) {
-          return false;
+          return false
         }
 
         if (!(endTime instanceof Date && !isNaN(endTime))) {
-          return false;
+          return false
         }
 
         if (hasProduct && !this.originalDurations.has(campaign.id)) {
-          const startTime = campaign.startTime?._seconds ? 
-            new Date(campaign.startTime._seconds * 1000) :
-            new Date(campaign.startTime.seconds * 1000);
-          
-          const duration = endTime - startTime;
-          this.originalDurations.set(campaign.id, duration);
+          const startTime = campaign.startTime?._seconds
+            ? new Date(campaign.startTime._seconds * 1000)
+            : new Date(campaign.startTime.seconds * 1000)
+
+          const duration = endTime - startTime
+          this.originalDurations.set(campaign.id, duration)
         }
 
-        const isNotEnded = now <= endTime || campaign.timerSettings.autoRestart;
-        const isActive = campaign.status === 'active';
+        const isNotEnded = now <= endTime || campaign.timerSettings.autoRestart
+        const isActive = campaign.status === "active"
 
-        return hasProduct && isNotEnded && isActive;
-      });
+        return hasProduct && isNotEnded && isActive
+      })
 
-      return activeCampaign;
+      return activeCampaign
     },
 
     createCountdownTimer(campaign, productId) {
-      const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`);
+      const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`)
       if (existingTimer) {
-        existingTimer.remove();
+        existingTimer.remove()
         if (this.activeTimers.has(productId)) {
-          clearInterval(this.activeTimers.get(productId));
-          this.activeTimers.delete(productId);
+          clearInterval(this.activeTimers.get(productId))
+          this.activeTimers.delete(productId)
         }
       }
 
-      const container = document.createElement('div');
-      container.id = `hmstudio-countdown-${productId}`;
+      const container = document.createElement("div")
+      container.id = `hmstudio-countdown-${productId}`
       container.style.cssText = `
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
-        padding: ${isMobile() ? '8px 10px' : '12px 15px'};
-        margin: ${isMobile() ? '10px 0' : '15px 0'};
+        padding: ${isMobile() ? "8px 10px" : "12px 15px"};
+        margin: ${isMobile() ? "10px 0" : "15px 0"};
         border-radius: 8px;
         text-align: center;
-        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+        direction: ${getCurrentLanguage() === "ar" ? "rtl" : "ltr"};
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: ${isMobile() ? '8px' : '12px'};
-        font-size: ${isMobile() ? '12px' : '14px'};
+        gap: ${isMobile() ? "8px" : "12px"};
+        font-size: ${isMobile() ? "12px" : "14px"};
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        flex-wrap: ${isMobile() ? 'wrap' : 'nowrap'};
-        width: ${isMobile() ? '100%' : 'auto'};
-      `;
+        flex-wrap: ${isMobile() ? "wrap" : "nowrap"};
+        width: ${isMobile() ? "100%" : "auto"};
+      `
 
-      const textElement = document.createElement('span');
-      const timerText = getCurrentLanguage() === 'ar' ? 
-        campaign.timerSettings.textAr : 
-        campaign.timerSettings.textEn;
-      textElement.textContent = timerText;
+      const textElement = document.createElement("span")
+      const timerText = getCurrentLanguage() === "ar" ? campaign.timerSettings.textAr : campaign.timerSettings.textEn
+      textElement.textContent = timerText
       textElement.style.cssText = `
         font-weight: 500;
-        ${isMobile() ? 'width: 100%; margin-bottom: 4px;' : ''}
-      `;
-        
-      const timeElement = document.createElement('div');
+        ${isMobile() ? "width: 100%; margin-bottom: 4px;" : ""}
+      `
+
+      const timeElement = document.createElement("div")
       timeElement.style.cssText = `
         display: flex;
         align-items: center;
@@ -476,34 +388,34 @@ const Analytics = {
         padding: 4px 8px;
         border-radius: 4px;
         background: rgba(255, 255, 255, 0.15);
-        ${isMobile() ? 'width: 100%; justify-content: center;' : ''}
-      `;
+        ${isMobile() ? "width: 100%; justify-content: center;" : ""}
+      `
 
-      container.appendChild(textElement);
-      container.appendChild(timeElement);
+      container.appendChild(textElement)
+      container.appendChild(timeElement)
 
-      let endTime = campaign.endTime?._seconds ? 
-        new Date(campaign.endTime._seconds * 1000) :
-        new Date(campaign.endTime.seconds * 1000);
+      const endTime = campaign.endTime?._seconds
+        ? new Date(campaign.endTime._seconds * 1000)
+        : new Date(campaign.endTime.seconds * 1000)
 
       this.activeTimers.set(productId, {
         element: timeElement,
         endTime: endTime,
         campaign: campaign,
-        originalDuration: this.originalDurations.get(campaign.id)
-      });
+        originalDuration: this.originalDurations.get(campaign.id),
+      })
 
-      return container;
+      return container
     },
 
     createProductCardTimer(campaign, productId) {
-      const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
+      const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`)
       if (existingTimer) {
-        return existingTimer;
+        return existingTimer
       }
 
-      const container = document.createElement('div');
-      container.id = `hmstudio-card-countdown-${productId}`;
+      const container = document.createElement("div")
+      container.id = `hmstudio-card-countdown-${productId}`
       container.style.cssText = `
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
@@ -512,53 +424,52 @@ const Analytics = {
         border-bottom-right-radius: 8px;
         border-bottom-left-radius: 8px;
         text-align: center;
-        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+        direction: ${getCurrentLanguage() === "ar" ? "rtl" : "ltr"};
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 4px;
-        font-size: ${isMobile() ? '10px' : '12px'};
+        font-size: ${isMobile() ? "10px" : "12px"};
         width: 100%;
         overflow: hidden;
-      `;
+      `
 
-      const timeElement = document.createElement('div');
+      const timeElement = document.createElement("div")
       timeElement.style.cssText = `
         display: flex;
         align-items: center;
         justify-content: center;
         flex-wrap: wrap;
-        gap: ${isMobile() ? '2px' : '4px'};
-      `;
+        gap: ${isMobile() ? "2px" : "4px"};
+      `
 
-      container.appendChild(timeElement);
+      container.appendChild(timeElement)
 
-      let endTime = campaign.endTime?._seconds ? 
-        new Date(campaign.endTime._seconds * 1000) :
-        new Date(campaign.endTime.seconds * 1000);
+      const endTime = campaign.endTime?._seconds
+        ? new Date(campaign.endTime._seconds * 1000)
+        : new Date(campaign.endTime.seconds * 1000)
 
-      const startTime = campaign.startTime?._seconds ? 
-        new Date(campaign.startTime._seconds * 1000) :
-        new Date(campaign.startTime.seconds * 1000);
+      const startTime = campaign.startTime?._seconds
+        ? new Date(campaign.startTime._seconds * 1000)
+        : new Date(campaign.startTime.seconds * 1000)
 
-      const originalDuration = endTime - startTime;
+      const originalDuration = endTime - startTime
 
       this.activeTimers.set(`card-${productId}`, {
         element: timeElement,
         endTime: endTime,
         campaign: campaign,
         originalDuration: originalDuration,
-        isFlashing: false
-      });
+        isFlashing: false,
+      })
 
-      return container;
+      return container
     },
 
-    // Add keyframes for flashing animation
     addFlashingStyleIfNeeded() {
-      if (!document.getElementById('countdown-flash-animation')) {
-        const style = document.createElement('style');
-        style.id = 'countdown-flash-animation';
+      if (!document.getElementById("countdown-flash-animation")) {
+        const style = document.createElement("style")
+        style.id = "countdown-flash-animation"
         style.textContent = `
           @keyframes countdown-flash {
             0%, 100% { opacity: 1; }
@@ -567,86 +478,81 @@ const Analytics = {
           .countdown-flash {
             animation: countdown-flash 1s ease-in-out infinite;
           }
-        `;
-        document.head.appendChild(style);
+        `
+        document.head.appendChild(style)
       }
     },
 
     updateAllTimers() {
-      this.addFlashingStyleIfNeeded();
-      const now = new Date();
-      
+      this.addFlashingStyleIfNeeded()
+      const now = new Date()
+
       this.activeTimers.forEach((timer, id) => {
-        if (!timer.element || !timer.endTime) return;
+        if (!timer.element || !timer.endTime) return
 
-        let timeDiff = timer.endTime - now;
+        let timeDiff = timer.endTime - now
 
-        // Handle auto-restart
         if (timeDiff <= 0 && timer.campaign?.timerSettings?.autoRestart && timer.originalDuration) {
-          const newEndTime = new Date(now.getTime() + timer.originalDuration);
-          timer.endTime = newEndTime;
-          timeDiff = timer.originalDuration;
-          timer.isFlashing = false;
-          console.log(`Timer restarted for ${id}, new end time:`, newEndTime);
+          const newEndTime = new Date(now.getTime() + timer.originalDuration)
+          timer.endTime = newEndTime
+          timeDiff = timer.originalDuration
+          timer.isFlashing = false
         } else if (timeDiff <= 0 && !timer.campaign?.timerSettings?.autoRestart) {
-          const elementId = id.startsWith('card-') ? 
-            `hmstudio-card-countdown-${id.replace('card-', '')}` :
-            `hmstudio-countdown-${id}`;
-          const element = document.getElementById(elementId);
-          if (element) element.remove();
-          this.activeTimers.delete(id);
-          return;
+          const elementId = id.startsWith("card-")
+            ? `hmstudio-card-countdown-${id.replace("card-", "")}`
+            : `hmstudio-countdown-${id}`
+          const element = document.getElementById(elementId)
+          if (element) element.remove()
+          this.activeTimers.delete(id)
+          return
         }
 
-        // Check if we're in the last 5 minutes
-        const isLastFiveMinutes = timeDiff <= 300000; // 5 minutes in milliseconds
+        const isLastFiveMinutes = timeDiff <= 300000
 
-        // Update flashing state if needed
         if (isLastFiveMinutes && !timer.isFlashing) {
-          timer.isFlashing = true;
+          timer.isFlashing = true
         } else if (!isLastFiveMinutes && timer.isFlashing) {
-          timer.isFlashing = false;
+          timer.isFlashing = false
         }
 
-        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000)
 
-        // Always include all time units
         const timeUnits = [
           {
             value: days,
-            label: getCurrentLanguage() === 'ar' ? 'ي' : 'd'
+            label: getCurrentLanguage() === "ar" ? "ي" : "d",
           },
           {
             value: hours,
-            label: getCurrentLanguage() === 'ar' ? 'س' : 'h'
+            label: getCurrentLanguage() === "ar" ? "س" : "h",
           },
           {
             value: minutes,
-            label: getCurrentLanguage() === 'ar' ? 'د' : 'm'
+            label: getCurrentLanguage() === "ar" ? "د" : "m",
           },
           {
             value: seconds,
-            label: getCurrentLanguage() === 'ar' ? 'ث' : 's'
-          }
-        ];
+            label: getCurrentLanguage() === "ar" ? "ث" : "s",
+          },
+        ]
 
-        const isCard = id.startsWith('card-');
-        const scale = isCard ? (isMobile() ? 0.85 : 1) : 1;
-        
+        const isCard = id.startsWith("card-")
+        const scale = isCard ? (isMobile() ? 0.85 : 1) : 1
+
         let html = `
-          <div class="countdown-units-wrapper ${timer.isFlashing ? 'countdown-flash' : ''}" style="
+          <div class="countdown-units-wrapper ${timer.isFlashing ? "countdown-flash" : ""}" style="
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: ${isCard ? '2px' : '4px'};
+            gap: ${isCard ? "2px" : "4px"};
             transform: scale(${scale});
-            flex-wrap: ${isCard ? 'wrap' : 'nowrap'};
-            ${isCard ? 'max-width: 100%; padding: 2px;' : ''}
+            flex-wrap: ${isCard ? "wrap" : "nowrap"};
+            ${isCard ? "max-width: 100%; padding: 2px;" : ""}
           ">
-        `;
+        `
 
         timeUnits.forEach((unit, index) => {
           html += `
@@ -654,217 +560,208 @@ const Analytics = {
               display: inline-flex;
               align-items: center;
               white-space: nowrap;
-              gap: ${isCard ? '1px' : '2px'};
-              ${index < timeUnits.length - 1 ? `margin-${getCurrentLanguage() === 'ar' ? 'left' : 'right'}: ${isCard ? '2px' : '4px'};` : ''}
-              ${isCard && index % 2 === 1 ? 'margin-right: 8px;' : ''}
+              gap: ${isCard ? "1px" : "2px"};
+              ${index < timeUnits.length - 1 ? `margin-${getCurrentLanguage() === "ar" ? "left" : "right"}: ${isCard ? "2px" : "4px"};` : ""}
+              ${isCard && index % 2 === 1 ? "margin-right: 8px;" : ""}
             ">
               <span style="
                 font-weight: bold;
-                min-width: ${isCard ? '14px' : '20px'};
+                min-width: ${isCard ? "14px" : "20px"};
                 text-align: center;
-                font-size: ${isCard ? (isMobile() ? '11px' : '12px') : (isMobile() ? '12px' : '14px')};
-              ">${String(unit.value).padStart(2, '0')}</span>
+                font-size: ${isCard ? (isMobile() ? "11px" : "12px") : isMobile() ? "12px" : "14px"};
+              ">${String(unit.value).padStart(2, "0")}</span>
               <span style="
-                font-size: ${isCard ? (isMobile() ? '9px' : '10px') : (isMobile() ? '10px' : '12px')};
+                font-size: ${isCard ? (isMobile() ? "9px" : "10px") : isMobile() ? "10px" : "12px"};
                 opacity: 0.8;
               ">${unit.label}</span>
-              ${index < timeUnits.length - 1 ? `
+              ${
+                index < timeUnits.length - 1
+                  ? `
                 <span style="
-                  margin-${getCurrentLanguage() === 'ar' ? 'right' : 'left'}: ${isCard ? '2px' : '4px'};
+                  margin-${getCurrentLanguage() === "ar" ? "right" : "left"}: ${isCard ? "2px" : "4px"};
                   opacity: 0.8;
                 ">:</span>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
-          `;
-        });
+          `
+        })
 
-        html += '</div>';
-        timer.element.innerHTML = html;
-      });
+        html += "</div>"
+        timer.element.innerHTML = html
+      })
     },
 
     setupProductCardTimers() {
-      const productCards = document.querySelectorAll('.product-item');
-      const processedCards = new Set();
-      
-      productCards.forEach(card => {
-        let productId = null;
-        const wishlistBtn = card.querySelector('[data-wishlist-id]');
+      const productCards = document.querySelectorAll(".product-item")
+      const processedCards = new Set()
+
+      productCards.forEach((card) => {
+        let productId = null
+        const wishlistBtn = card.querySelector("[data-wishlist-id]")
         if (wishlistBtn) {
-          productId = wishlistBtn.getAttribute('data-wishlist-id');
+          productId = wishlistBtn.getAttribute("data-wishlist-id")
         }
 
         if (productId && !processedCards.has(productId)) {
-          processedCards.add(productId);
-          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          processedCards.add(productId)
+          const activeCampaign = this.findActiveCampaignForProduct(productId)
           if (activeCampaign) {
-            const timer = this.createProductCardTimer(activeCampaign, productId);
-            const imageContainer = card.querySelector('.content');
+            const timer = this.createProductCardTimer(activeCampaign, productId)
+            const imageContainer = card.querySelector(".content")
             if (imageContainer && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
-              imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
+              imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling)
             }
           }
         }
-      });
+      })
     },
 
     setupProductTimer() {
-      console.log('Setting up product timer...');
-
-      let productId;
-      const wishlistBtn = document.querySelector('[data-wishlist-id]');
+      let productId
+      const wishlistBtn = document.querySelector("[data-wishlist-id]")
       if (wishlistBtn) {
-        productId = wishlistBtn.getAttribute('data-wishlist-id');
+        productId = wishlistBtn.getAttribute("data-wishlist-id")
       }
 
       if (!productId) {
-        const productForm = document.querySelector('form[data-product-id]');
+        const productForm = document.querySelector("form[data-product-id]")
         if (productForm) {
-          productId = productForm.getAttribute('data-product-id');
+          productId = productForm.getAttribute("data-product-id")
         }
       }
 
       if (!productId) {
-        return;
+        return
       }
 
-      this.currentProductId = productId;
-      const activeCampaign = this.findActiveCampaignForProduct(productId);
+      this.currentProductId = productId
+      const activeCampaign = this.findActiveCampaignForProduct(productId)
 
       if (!activeCampaign) {
-        return;
+        return
       }
 
-      const timer = this.createCountdownTimer(activeCampaign, productId);
+      const timer = this.createCountdownTimer(activeCampaign, productId)
 
       const priceSelectors = [
-        'h2.product-formatted-price.theme-text-primary',
-        '.product-formatted-price',
-        '.product-formatted-price.theme-text-primary',
-        '.product-price',
-        'h2.theme-text-primary',
-        '.theme-text-primary'
-      ];
+        "h2.product-formatted-price.theme-text-primary",
+        ".product-formatted-price",
+        ".product-formatted-price.theme-text-primary",
+        ".product-price",
+        "h2.theme-text-primary",
+        ".theme-text-primary",
+      ]
 
-      let inserted = false;
+      let inserted = false
       for (const selector of priceSelectors) {
-        const priceContainer = document.querySelector(selector);
-        
+        const priceContainer = document.querySelector(selector)
+
         if (priceContainer?.parentElement) {
-          priceContainer.parentElement.insertBefore(timer, priceContainer);
-          inserted = true;
-          break;
+          priceContainer.parentElement.insertBefore(timer, priceContainer)
+          inserted = true
+          break
         }
       }
 
       if (!inserted) {
-        const productDetails = document.querySelector('.products-details');
+        const productDetails = document.querySelector(".products-details")
         if (productDetails) {
-          productDetails.insertBefore(timer, productDetails.firstChild);
+          productDetails.insertBefore(timer, productDetails.firstChild)
         }
       }
 
-      // Create sticky cart after setting up timer
-      this.createStickyCart();
+      this.createStickyCart()
     },
 
     startTimerUpdates() {
       if (this.updateInterval) {
-        clearInterval(this.updateInterval);
+        clearInterval(this.updateInterval)
       }
-      this.updateInterval = setInterval(() => this.updateAllTimers(), 1000);
+      this.updateInterval = setInterval(() => this.updateAllTimers(), 1000)
     },
 
     stopTimerUpdates() {
       if (this.updateInterval) {
-        clearInterval(this.updateInterval);
-        this.updateInterval = null;
+        clearInterval(this.updateInterval)
+        this.updateInterval = null
       }
     },
 
     initialize() {
-      console.log('Initializing Smart Cart with campaigns:', this.campaigns);
-      
-      this.stopTimerUpdates();
-      
-      if (document.querySelector('.product.products-details-page')) {
-        console.log('On product page');
-        // Create sticky cart regardless of campaigns
-        this.createStickyCart();
+      this.stopTimerUpdates()
 
-        // Setup timer if there's an active campaign
-        const wishlistBtn = document.querySelector('[data-wishlist-id]');
-        const productForm = document.querySelector('form[data-product-id]');
-        const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
-                       productForm?.getAttribute('data-product-id');
+      if (document.querySelector(".product.products-details-page")) {
+        this.createStickyCart()
+
+        const wishlistBtn = document.querySelector("[data-wishlist-id]")
+        const productForm = document.querySelector("form[data-product-id]")
+        const productId = wishlistBtn?.getAttribute("data-wishlist-id") || productForm?.getAttribute("data-product-id")
 
         if (productId) {
-          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          const activeCampaign = this.findActiveCampaignForProduct(productId)
           if (activeCampaign) {
-            this.setupProductTimer();
+            this.setupProductTimer()
             if (this.activeTimers.size > 0) {
-              this.startTimerUpdates();
+              this.startTimerUpdates()
             }
           }
         }
 
         const observer = new MutationObserver((mutations) => {
-          // Check if sticky cart needs to be recreated
-          if (!document.getElementById('hmstudio-sticky-cart')) {
-            this.createStickyCart();
+          if (!document.getElementById("hmstudio-sticky-cart")) {
+            this.createStickyCart()
           }
 
-          // Check if timer needs to be updated (only if there's an active campaign)
           if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-            const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
+            const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId)
             if (activeCampaign) {
-              this.setupProductTimer();
+              this.setupProductTimer()
               if (this.activeTimers.size > 0 && !this.updateInterval) {
-                this.startTimerUpdates();
+                this.startTimerUpdates()
               }
             }
           }
-        });
+        })
 
-        observer.observe(document.body, { childList: true, subtree: true });
-      } else if (document.querySelector('.product-item')) {
-        console.log('On product listing page, setting up card timers');
-        this.setupProductCardTimers();
+        observer.observe(document.body, { childList: true, subtree: true })
+      } else if (document.querySelector(".product-item")) {
+        this.setupProductCardTimers()
 
         if (this.activeTimers.size > 0) {
-          this.startTimerUpdates();
+          this.startTimerUpdates()
         }
 
         const observer = new MutationObserver((mutations) => {
           mutations.forEach((mutation) => {
             if (mutation.addedNodes.length) {
-              this.setupProductCardTimers();
+              this.setupProductCardTimers()
               if (this.activeTimers.size > 0 && !this.updateInterval) {
-                this.startTimerUpdates();
+                this.startTimerUpdates()
               }
             }
-          });
-        });
+          })
+        })
 
-        observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.body, { childList: true, subtree: true })
       }
-    }
-  };
-
-  window.addEventListener('beforeunload', () => {
-    SmartCart.stopTimerUpdates();
-  });
-
-  // Handle mobile viewport changes
-  window.addEventListener('resize', () => {
-    if (SmartCart.stickyCartElement) {
-      SmartCart.createStickyCart(); // Recreate sticky cart with updated mobile styles
-    }
-  });
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => SmartCart.initialize());
-  } else {
-    SmartCart.initialize();
+    },
   }
-})();
+
+  window.addEventListener("beforeunload", () => {
+    SmartCart.stopTimerUpdates()
+  })
+
+  window.addEventListener("resize", () => {
+    if (SmartCart.stickyCartElement) {
+      SmartCart.createStickyCart()
+    }
+  })
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => SmartCart.initialize())
+  } else {
+    SmartCart.initialize()
+  }
+})()
