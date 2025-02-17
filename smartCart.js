@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.7.8
+// src/scripts/smartCart.js v1.7.9
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -444,6 +444,7 @@
           gap: 4px;
           font-size: ${isMobile() ? '10px' : '12px'};
           width: 100%;
+          overflow: hidden;
       `;
   
       const timeElement = document.createElement('div');
@@ -457,20 +458,10 @@
   
       container.appendChild(timeElement);
   
-      // For Perfect theme product cards
-      const imageContainer = document.querySelector('.card-product');
-      if (imageContainer) {
-          const cardBody = imageContainer.querySelector('.card-body') || 
-                          imageContainer.querySelector('.content');
-          if (cardBody) {
-              cardBody.appendChild(container);
-          }
-      }
-  
-      // For Soft theme product cards (keep existing logic)
-      const softThemeContainer = document.querySelector('.content');
-      if (softThemeContainer && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
-          softThemeContainer.parentNode.insertBefore(timer, softThemeContainer.nextSibling);
+      // Find the !js-card-top element and insert timer after it
+      const cardTop = document.querySelector('.!js-card-top');
+      if (cardTop) {
+          cardTop.parentNode.insertBefore(container, cardTop.nextSibling);
       }
   
       let endTime = campaign.endTime?._seconds ? 
@@ -670,33 +661,14 @@
   
       const timer = this.createCountdownTimer(activeCampaign, productId);
   
-      // Try multiple possible insertion points for Perfect theme
-      const possibleContainers = [
-          '.product-formatted-price',             // Soft theme
-          '.product-details .price',              // Perfect theme price
-          '.product-details .text-primary',       // Perfect theme alternative
-          '.product-details form .card-body',     // Perfect theme form container
-          '.products-details'                     // Fallback
-      ];
-  
-      let inserted = false;
-      for (const selector of possibleContainers) {
-          const container = document.querySelector(selector);
-          if (container) {
-              if (selector.includes('form')) {
-                  // Insert at the beginning of the form
-                  container.insertBefore(timer, container.firstChild);
-              } else {
-                  // Insert before the price
-                  container.parentElement.insertBefore(timer, container);
-              }
-              inserted = true;
-              break;
-          }
-      }
-  
-      if (!inserted && document.querySelector('.product-details')) {
-          document.querySelector('.product-details').prepend(timer);
+      // Find the target card element
+      const targetCard = document.querySelector('.card.border-0.mb-3.p-0');
+      if (targetCard) {
+          // Insert timer before the card
+          targetCard.parentNode.insertBefore(timer, targetCard);
+          console.log('Timer inserted before card');
+      } else {
+          console.log('Target card not found');
       }
   
       // Create sticky cart after setting up timer
