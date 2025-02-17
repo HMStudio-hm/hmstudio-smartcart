@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.8.8
+// src/scripts/smartCart.js v1.8.9
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -659,24 +659,23 @@
               console.log('Created timer for product card');
     
               // Try multiple selectors for insertion point
-              const insertionPoints = [
-                '.content', // Soft theme
-                '.card-body', // Perfect theme
-                '.product-content', // Generic fallback
-                '.card-footer'  // Perfect theme alternate
-              ];
-    
-              for (const selector of insertionPoints) {
-                const container = card.querySelector(selector);
-                if (container) {
-                  const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-                  if (!existingTimer) {
-                    container.parentNode.insertBefore(timer, container.nextSibling);
-                    console.log('Timer inserted into product card');
-                  }
-                  break;
-                }
-              }
+              let inserted = false;
+for (const selector of insertionPoints) {
+  const container = card.querySelector(selector);
+  if (container) {
+    const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
+    if (!existingTimer) {
+      container.parentNode.insertBefore(timer, container.nextSibling);
+      console.log('Timer inserted into product card with selector:', selector);
+      inserted = true;
+      break;
+    }
+  }
+}
+
+if (!inserted) {
+  console.log('Could not find insertion point for timer in card:', card);
+}
             }
           } else {
             console.log('No product ID found or card already processed');
@@ -809,54 +808,83 @@
       console.log('Initializing Smart Cart with campaigns:', this.campaigns);
       
       this.stopTimerUpdates();
-      
-      // Check if we're on a product page
-      const isProductPage = document.querySelector('.product.products-details-page') || 
-                           document.querySelector('.js-details-section');
-      console.log('Is product page:', isProductPage);
-      
+    
+      // Card selectors for both themes
+      const productCardSelectors = [
+        '.product-item',                          // Soft theme
+        '.card.card-product',                     // Perfect theme
+        '.col .card',                             // Perfect theme alternate
+        '[data-wishlist-id]'                      // Generic product container
+      ];
+    
+      // Check if we're on a product detail page
+      const isProductPage = document.querySelector([
+        '.product.products-details-page',         // Soft theme
+        '.js-details-section',                    // Perfect theme
+        '#js-details-id',                         // Perfect theme alternate
+        '.products-details'                       // Generic product detail
+      ].join(','));
+    
+      console.log('Is product page:', !!isProductPage);
+    
       if (isProductPage) {
         console.log('On product page, setting up timer');
-        // Create sticky cart regardless of campaigns
         this.createStickyCart();
-    
-        // Setup timer if there's an active campaign
         this.setupProductTimer();
       } else {
-        // Check if we're on a product listing page
-        const hasProductCards = document.querySelector('.product-item') || 
-                              document.querySelector('.card.card-product');
-        console.log('Has product cards:', hasProductCards);
-        
+        // Check if we're on a product listing page by trying all selectors
+        let hasProductCards = false;
+        for (const selector of productCardSelectors) {
+          const cards = document.querySelectorAll(selector);
+          if (cards.length > 0) {
+            hasProductCards = true;
+            console.log(`Found ${cards.length} product cards with selector: ${selector}`);
+            break;
+          }
+        }
+    
         if (hasProductCards) {
           console.log('On product listing page, setting up card timers');
           this.setupProductCardTimers();
+    
+          if (this.activeTimers.size > 0) {
+            this.startTimerUpdates();
+          }
         }
       }
     
       // Add observer to handle dynamic content changes
       const observer = new MutationObserver((mutations) => {
-        console.log('DOM mutation observed');
-        if (isProductPage) {
-          // Check if sticky cart needs to be recreated
-          if (!document.getElementById('hmstudio-sticky-cart')) {
-            console.log('Recreating sticky cart');
-            this.createStickyCart();
-          }
+        mutations.forEach(mutation => {
+          if (mutation.type === 'childList' && mutation.addedNodes.length) {
+            const hasNewCards = [...mutation.addedNodes].some(node => {
+              if (node.nodeType === 1) { // Element node
+                return productCardSelectors.some(selector => 
+                  node.matches(selector) || node.querySelector(selector)
+                );
+              }
+              return false;
+            });
     
-          // Check if timer needs to be updated
-          if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-            console.log('Recreating product timer');
-            this.setupProductTimer();
+            if (hasNewCards) {
+              console.log('New product cards detected, updating timers');
+              this.setupProductCardTimers();
+              
+              if (this.activeTimers.size > 0 && !this.updateInterval) {
+                this.startTimerUpdates();
+              }
+            }
           }
-        } else if (hasProductCards) {
-          console.log('Updating product card timers');
-          this.setupProductCardTimers();
-        }
+        });
       });
     
-      observer.observe(document.body, { childList: true, subtree: true });
+      observer.observe(document.body, { 
+        childList: true, 
+        subtree: true 
+      });
+    
       console.log('Mutation observer set up');
+    
     
       // Start timer updates if needed
       if (this.activeTimers.size > 0) {
