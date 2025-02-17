@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.9.6
+// src/scripts/smartCart.js v1.9.7
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -794,7 +794,6 @@
           this.createStickyCart();
   
           // Setup timer if there's an active campaign
-          // Enhanced product ID detection for both themes
           let productId = null;
           const selectors = [
               '[data-wishlist-id]',
@@ -824,46 +823,98 @@
               }
           }
   
+          // More specific observer to prevent infinite loops
           const observer = new MutationObserver((mutations) => {
-              // Check if sticky cart needs to be recreated
-              if (!document.getElementById('hmstudio-sticky-cart')) {
-                  this.createStickyCart();
-              }
+              mutations.forEach(mutation => {
+                  // Only process if our timer or sticky cart was actually removed
+                  const wasTimerRemoved = Array.from(mutation.removedNodes).some(node => 
+                      node.id === `hmstudio-countdown-${this.currentProductId}`
+                  );
+                  const wasStickyCartRemoved = Array.from(mutation.removedNodes).some(node => 
+                      node.id === 'hmstudio-sticky-cart'
+                  );
   
-              // Check if timer needs to be updated (only if there's an active campaign)
-              if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-                  const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
-                  if (activeCampaign) {
-                      this.setupProductTimer();
-                      if (this.activeTimers.size > 0 && !this.updateInterval) {
-                          this.startTimerUpdates();
+                  if (wasStickyCartRemoved) {
+                      this.createStickyCart();
+                  }
+  
+                  if (wasTimerRemoved && this.currentProductId) {
+                      const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
+                      if (activeCampaign) {
+                          this.setupProductTimer();
+                          if (this.activeTimers.size > 0 && !this.updateInterval) {
+                              this.startTimerUpdates();
+                          }
                       }
                   }
-              }
+              });
           });
   
-          observer.observe(document.body, { childList: true, subtree: true });
-      } else if (document.querySelector('.product-item') || document.querySelector('.card.card-product')) {
-          // Support both themes for product listing pages
-          console.log('On product listing page, setting up card timers');
-          this.setupProductCardTimers();
-  
-          if (this.activeTimers.size > 0) {
-              this.startTimerUpdates();
+          // Observe only specific parts of the DOM
+          const targetNode = document.querySelector('.products-details') || 
+                            document.querySelector('.js-details-section');
+          if (targetNode) {
+              observer.observe(targetNode, { 
+                  childList: true, 
+                  subtree: true 
+              });
           }
   
-          const observer = new MutationObserver((mutations) => {
-              mutations.forEach((mutation) => {
-                  if (mutation.addedNodes.length) {
+      } else {
+          // Product listing page
+          const productListingSelectors = ['.product-item', '.card.card-product'];
+          let hasProductListing = false;
+          
+          for (const selector of productListingSelectors) {
+              if (document.querySelector(selector)) {
+                  hasProductListing = true;
+                  break;
+              }
+          }
+  
+          if (hasProductListing) {
+              console.log('On product listing page, setting up card timers');
+              this.setupProductCardTimers();
+  
+              if (this.activeTimers.size > 0) {
+                  this.startTimerUpdates();
+              }
+  
+              // More specific observer for product listing
+              const listingObserver = new MutationObserver((mutations) => {
+                  let shouldUpdate = false;
+                  mutations.forEach((mutation) => {
+                      // Check if new products were actually added
+                      const addedProducts = Array.from(mutation.addedNodes).some(node => {
+                          return node.classList && (
+                              node.classList.contains('product-item') || 
+                              node.classList.contains('card-product')
+                          );
+                      });
+  
+                      if (addedProducts) {
+                          shouldUpdate = true;
+                      }
+                  });
+  
+                  if (shouldUpdate) {
                       this.setupProductCardTimers();
                       if (this.activeTimers.size > 0 && !this.updateInterval) {
                           this.startTimerUpdates();
                       }
                   }
               });
-          });
   
-          observer.observe(document.body, { childList: true, subtree: true });
+              // Observe only the product container
+              const productContainer = document.querySelector('.products-container') || 
+                                     document.querySelector('.product-listing');
+              if (productContainer) {
+                  listingObserver.observe(productContainer, { 
+                      childList: true, 
+                      subtree: true 
+                  });
+              }
+          }
       }
   }
   };
