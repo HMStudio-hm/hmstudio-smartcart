@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.7.7
+// src/scripts/smartCart.js v1.7.8
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -425,60 +425,67 @@
     createProductCardTimer(campaign, productId) {
       const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
       if (existingTimer) {
-        return existingTimer;
+          return existingTimer;
       }
-
+  
       const container = document.createElement('div');
       container.id = `hmstudio-card-countdown-${productId}`;
       container.style.cssText = `
-        background: ${campaign.timerSettings.backgroundColor};
-        color: ${campaign.timerSettings.textColor};
-        padding: 4px;
-        margin-top: 30px !important;
-        border-bottom-right-radius: 8px;
-        border-bottom-left-radius: 8px;
-        text-align: center;
-        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        font-size: ${isMobile() ? '10px' : '12px'};
-        width: 100%;
-        overflow: hidden;
+          background: ${campaign.timerSettings.backgroundColor};
+          color: ${campaign.timerSettings.textColor};
+          padding: 4px;
+          margin-top: 10px !important;
+          border-radius: 8px;
+          text-align: center;
+          direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          font-size: ${isMobile() ? '10px' : '12px'};
+          width: 100%;
       `;
-
+  
       const timeElement = document.createElement('div');
       timeElement.style.cssText = `
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-wrap: wrap;
-        gap: ${isMobile() ? '2px' : '4px'};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: ${isMobile() ? '2px' : '4px'};
       `;
-
+  
       container.appendChild(timeElement);
-
+  
+      // For Perfect theme product cards
+      const imageContainer = document.querySelector('.card-product');
+      if (imageContainer) {
+          const cardBody = imageContainer.querySelector('.card-body') || 
+                          imageContainer.querySelector('.content');
+          if (cardBody) {
+              cardBody.appendChild(container);
+          }
+      }
+  
+      // For Soft theme product cards (keep existing logic)
+      const softThemeContainer = document.querySelector('.content');
+      if (softThemeContainer && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
+          softThemeContainer.parentNode.insertBefore(timer, softThemeContainer.nextSibling);
+      }
+  
       let endTime = campaign.endTime?._seconds ? 
-        new Date(campaign.endTime._seconds * 1000) :
-        new Date(campaign.endTime.seconds * 1000);
-
-      const startTime = campaign.startTime?._seconds ? 
-        new Date(campaign.startTime._seconds * 1000) :
-        new Date(campaign.startTime.seconds * 1000);
-
-      const originalDuration = endTime - startTime;
-
+          new Date(campaign.endTime._seconds * 1000) :
+          new Date(campaign.endTime.seconds * 1000);
+  
       this.activeTimers.set(`card-${productId}`, {
-        element: timeElement,
-        endTime: endTime,
-        campaign: campaign,
-        originalDuration: originalDuration,
-        isFlashing: false
+          element: timeElement,
+          endTime: endTime,
+          campaign: campaign,
+          originalDuration: this.originalDurations.get(campaign.id)
       });
-
+  
       return container;
-    },
+  },
 
     // Add keyframes for flashing animation
     addFlashingStyleIfNeeded() {
@@ -637,21 +644,17 @@
     setupProductTimer() {
       console.log('Setting up product timer...');
   
-      // Support both themes' product identification methods
       let productId = null;
-      const selectors = [
-          '[data-wishlist-id]', // Soft theme
-          'form[data-product-id]', // Perfect theme primary
-          'input[name="product_id"]' // Perfect theme alternative
-      ];
+      const wishlistBtn = document.querySelector('[data-wishlist-id]');
+      const productForm = document.querySelector('form[data-product-id]');
+      const productInput = document.querySelector('input[name="product_id"]');
   
-      // Try each selector
-      for (const selector of selectors) {
-          const element = document.querySelector(selector);
-          if (element) {
-              productId = element.getAttribute(selector.includes('wishlist') ? 'data-wishlist-id' : 'data-product-id');
-              break;
-          }
+      if (wishlistBtn) {
+          productId = wishlistBtn.getAttribute('data-wishlist-id');
+      } else if (productForm) {
+          productId = productForm.getAttribute('data-product-id');
+      } else if (productInput) {
+          productId = productInput.value;
       }
   
       if (!productId) {
@@ -667,39 +670,36 @@
   
       const timer = this.createCountdownTimer(activeCampaign, productId);
   
-      // Support multiple possible price container selectors
-      const priceSelectors = [
-          'h2.product-formatted-price.theme-text-primary', // Soft theme
-          '.product-formatted-price',
-          '.product-formatted-price.theme-text-primary',
-          '.product-price',
-          'h2.theme-text-primary',
-          '.theme-text-primary',
-          '.text-primary', // Perfect theme
-          '.product-details .price' // Perfect theme
+      // Try multiple possible insertion points for Perfect theme
+      const possibleContainers = [
+          '.product-formatted-price',             // Soft theme
+          '.product-details .price',              // Perfect theme price
+          '.product-details .text-primary',       // Perfect theme alternative
+          '.product-details form .card-body',     // Perfect theme form container
+          '.products-details'                     // Fallback
       ];
   
       let inserted = false;
-      for (const selector of priceSelectors) {
-          const priceContainer = document.querySelector(selector);
-          
-          if (priceContainer?.parentElement) {
-              priceContainer.parentElement.insertBefore(timer, priceContainer);
+      for (const selector of possibleContainers) {
+          const container = document.querySelector(selector);
+          if (container) {
+              if (selector.includes('form')) {
+                  // Insert at the beginning of the form
+                  container.insertBefore(timer, container.firstChild);
+              } else {
+                  // Insert before the price
+                  container.parentElement.insertBefore(timer, container);
+              }
               inserted = true;
               break;
           }
       }
   
-      if (!inserted) {
-          // Support both themes' product detail containers
-          const productDetails = document.querySelector('.products-details') || 
-                               document.querySelector('.product-details');
-          if (productDetails) {
-              productDetails.insertBefore(timer, productDetails.firstChild);
-          }
+      if (!inserted && document.querySelector('.product-details')) {
+          document.querySelector('.product-details').prepend(timer);
       }
   
-      // Create sticky cart with theme-agnostic selectors
+      // Create sticky cart after setting up timer
       this.createStickyCart();
   },
 
