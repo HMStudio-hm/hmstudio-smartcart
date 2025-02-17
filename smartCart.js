@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.9.3
+// src/scripts/smartCart.js v1.9.4
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -619,75 +619,94 @@
       
       // Support both themes' product card structures
       const productCardSelectors = [
-        '.product-item', // Soft theme
-        '.card.card-product' // Perfect theme
+        '.product-item',              // Soft theme
+        '.card.card-product',         // Perfect theme
+        '.js-card-item'              // Generic selector
       ];
     
-      const processedCards = new Set();
+      let allCards = new Set();
       
+      // Gather all cards from all selectors
       productCardSelectors.forEach(selector => {
-        const productCards = document.querySelectorAll(selector);
-        console.log(`Found ${productCards.length} cards with selector: ${selector}`);
-        
-        productCards.forEach(card => {
-          let productId = null;
-          console.log('Checking card for product ID:', card);
+        const cards = document.querySelectorAll(selector);
+        console.log(`Found ${cards.length} cards with selector: ${selector}`);
+        cards.forEach(card => allCards.add(card));
+      });
     
-          // Try multiple selectors for product ID
-          const idSelectors = [
-            '[data-wishlist-id]',  // Soft theme
-            'input[name="product_id"]', // Perfect theme
-            '#product-id', // Perfect theme alternate
-            '.js-add-to-cart' // Perfect theme button
-          ];
+      console.log('Total unique cards found:', allCards.size);
     
-          for (const idSelector of idSelectors) {
-            const element = card.querySelector(idSelector);
-            console.log('Trying selector:', idSelector, 'Found element:', element);
-            if (element) {
-              productId = element.getAttribute('data-wishlist-id') || 
-                         element.getAttribute('onclick')?.match(/\'(.*?)\'/)?.[1] || 
-                         element.value;
-              console.log('Found product ID:', productId, 'using selector:', idSelector);
-              break;
-            }
+      // Process each card
+      allCards.forEach(card => {
+        console.log('Checking card for product ID:', card);
+        let productId = null;
+    
+        // Try different selectors for product ID
+        const idSelectors = [
+          {
+            selector: '[data-wishlist-id]',
+            attribute: 'data-wishlist-id'
+          },
+          {
+            selector: '.add-to-wishlist',
+            attribute: 'data-wishlist-id'
+          },
+          {
+            selector: 'input[name="product_id"]',
+            attribute: 'value'
           }
+        ];
     
-          if (productId && !processedCards.has(productId)) {
-            console.log('Processing product ID:', productId);
-            processedCards.add(productId);
-            
-            const activeCampaign = this.findActiveCampaignForProduct(productId);
-            console.log('Active campaign for product:', activeCampaign);
+        for (const {selector, attribute} of idSelectors) {
+          const element = card.querySelector(selector);
+          if (element) {
+            productId = element.getAttribute(attribute);
+            console.log('Found product ID:', productId, 'using selector:', selector);
+            break;
+          }
+        }
     
-            if (activeCampaign) {
-              const timer = this.createProductCardTimer(activeCampaign, productId);
-              console.log('Created timer for product card');
+        if (productId) {
+          console.log('Processing product ID:', productId);
+          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          console.log('Active campaign for product:', activeCampaign);
     
-              // Try multiple selectors for insertion point
-              const insertionPoints = [
-                '.content', // Soft theme
-                '.card-body', // Perfect theme
-                '.product-content', // Generic fallback
-                '.card-footer'  // Perfect theme alternate
-              ];
+          if (activeCampaign) {
+            const timer = this.createProductCardTimer(activeCampaign, productId);
+            console.log('Created timer for product card');
     
-              for (const selector of insertionPoints) {
-                const container = card.querySelector(selector);
-                if (container) {
-                  const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-                  if (!existingTimer) {
-                    container.parentNode.insertBefore(timer, container.nextSibling);
-                    console.log('Timer inserted into product card');
-                  }
-                  break;
+            // Try different insertion points
+            const insertionPoints = [
+              '.card-body',                  // Perfect theme
+              '.card-footer',                // Perfect theme alternate
+              '.content',                    // Soft theme
+              '.card-product .product-content'  // Generic
+            ];
+    
+            let inserted = false;
+            for (const selector of insertionPoints) {
+              const container = card.querySelector(selector);
+              if (container) {
+                // Check if timer already exists
+                const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
+                if (existingTimer) {
+                  existingTimer.remove(); // Remove existing timer to avoid duplicates
                 }
+                container.parentNode.insertBefore(timer, container.nextSibling);
+                console.log('Timer inserted into product card');
+                inserted = true;
+                break;
               }
             }
+    
+            if (!inserted) {
+              console.log('Could not find insertion point for timer in card');
+            }
           } else {
-            console.log('No product ID found or card already processed');
+            console.log('No active campaign found for product:', productId);
           }
-        });
+        } else {
+          console.log('No product ID found for card:', card);
+        }
       });
     },
 
