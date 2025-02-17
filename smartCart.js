@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.8.2
+// src/scripts/smartCart.js v1.8.3
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -65,23 +65,23 @@
 
     createStickyCart() {
       if (this.stickyCartElement) {
-          this.stickyCartElement.remove();
+        this.stickyCartElement.remove();
       }
-  
+    
       const container = document.createElement('div');
       container.id = 'hmstudio-sticky-cart';
       container.style.cssText = `
-          position: fixed;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: white;
-          box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-          padding: ${isMobile() ? '12px' : '20px'};
-          z-index: 999999;
-          display: none;
-          direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
-          height: ${isMobile() ? 'auto' : '100px'};
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+        padding: ${isMobile() ? '12px' : '20px'};
+        z-index: 999999;
+        display: none;
+        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+        height: ${isMobile() ? 'auto' : '100px'};  // Added this line
       `;
 
       const wrapper = document.createElement('div');
@@ -164,7 +164,6 @@
         padding: 0;
         ${isMobile() ? 'flex: 0 0 60px;' : ''};
       `;
-      
     
       const increaseBtn = document.createElement('button');
       increaseBtn.textContent = '+';
@@ -262,21 +261,20 @@
       addButton.addEventListener('mouseover', () => addButton.style.opacity = '0.9');
       addButton.addEventListener('mouseout', () => addButton.style.opacity = '1');
       addButton.addEventListener('click', () => {
-        const originalSelect = document.querySelector('select#product-quantity, input[name="quantity"]');
+        const originalSelect = document.querySelector('select#product-quantity');
         if (originalSelect) {
-            originalSelect.value = quantityInput.value;
-            const event = new Event('change', { bubbles: true });
-            originalSelect.dispatchEvent(event);
+          originalSelect.value = quantityInput.value;
+          const event = new Event('change', { bubbles: true });
+          originalSelect.dispatchEvent(event);
         }
-
-        // Support both themes' add to cart buttons
-        const originalButton = document.querySelector('.btn.btn-add-to-cart, .btn-primary[type="submit"]');
+    
+        const originalButton = document.querySelector('.btn.btn-add-to-cart');
         if (originalButton) {
-            setTimeout(() => {
-                originalButton.click();
-            }, 100);
+          setTimeout(() => {
+            originalButton.click();
+          }, 100);
         }
-    });
+      });
 
       // Assemble the quantity section
       quantityWrapper.appendChild(decreaseBtn);
@@ -294,24 +292,24 @@
       this.stickyCartElement = container;
       // Add scroll event listener
       window.addEventListener('scroll', () => {
-        const originalButton = document.querySelector('.btn.btn-add-to-cart, .btn-primary[type="submit"]');
-        const originalSelect = document.querySelector('select#product-quantity, input[name="quantity"]');
+        const originalButton = document.querySelector('.btn.btn-add-to-cart');
+        const originalSelect = document.querySelector('select#product-quantity');
         
         if (!originalButton) return;
-
+    
         const buttonRect = originalButton.getBoundingClientRect();
         const isButtonVisible = buttonRect.top >= 0 && buttonRect.bottom <= window.innerHeight;
         
         if (!isButtonVisible) {
-            container.style.display = 'block';
-            if (originalSelect) {
-                quantityInput.value = originalSelect.value;
-            }
+          container.style.display = 'block';
+          if (originalSelect) {
+            quantityInput.value = originalSelect.value;
+          }
         } else {
-            container.style.display = 'none';
+          container.style.display = 'none';
         }
-    });
-},
+      });
+    },
 
     findActiveCampaignForProduct(productId) {
       const now = new Date();
@@ -630,10 +628,11 @@
               const activeCampaign = this.findActiveCampaignForProduct(productId);
               console.log('Active campaign for product:', productId, activeCampaign);
               if (activeCampaign) {
-                  const cardTop = card.querySelector('.!js-card-top');
-                  if (cardTop) {
+                  // Get the image container or image element
+                  const image = card.querySelector('img');
+                  if (image) {
                       const timer = this.createProductCardTimer(activeCampaign, productId);
-                      cardTop.parentNode.insertBefore(timer, cardTop.nextSibling);
+                      image.parentNode.insertBefore(timer, image.nextSibling);
                       console.log('Timer inserted for product:', productId);
                   }
               }
@@ -707,50 +706,67 @@
       this.stopTimerUpdates();
       
       if (document.querySelector('.product.products-details-page')) {
-          console.log('On product page');
-          // Create sticky cart regardless of campaigns
-          this.createStickyCart();
-  
-          // Setup timer if there's an active campaign
-          const wishlistBtn = document.querySelector('[data-wishlist-id]');
-          const productForm = document.querySelector('form[data-product-id]');
-          const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
-                         productForm?.getAttribute('data-product-id');
-  
-          console.log('Product ID found:', productId); // Add this debug log
-  
-          if (productId) {
-              const activeCampaign = this.findActiveCampaignForProduct(productId);
-              console.log('Active campaign found:', activeCampaign); // Add this debug log
-              if (activeCampaign) {
-                  this.setupProductTimer();
-                  if (this.activeTimers.size > 0) {
-                      this.startTimerUpdates();
-                  }
-              }
-          }
-      } else if (document.querySelector('.card.card-product')) { // Update this selector
-          console.log('On product listing page, setting up card timers');
-          this.setupProductCardTimers();
-  
-          if (this.activeTimers.size > 0) {
+        console.log('On product page');
+        // Create sticky cart regardless of campaigns
+        this.createStickyCart();
+
+        // Setup timer if there's an active campaign
+        const wishlistBtn = document.querySelector('[data-wishlist-id]');
+        const productForm = document.querySelector('form[data-product-id]');
+        const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
+                       productForm?.getAttribute('data-product-id');
+
+        if (productId) {
+          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          if (activeCampaign) {
+            this.setupProductTimer();
+            if (this.activeTimers.size > 0) {
               this.startTimerUpdates();
+            }
           }
-  
-          const observer = new MutationObserver((mutations) => {
-              mutations.forEach((mutation) => {
-                  if (mutation.addedNodes.length) {
-                      this.setupProductCardTimers();
-                      if (this.activeTimers.size > 0 && !this.updateInterval) {
-                          this.startTimerUpdates();
-                      }
-                  }
-              });
+        }
+
+        const observer = new MutationObserver((mutations) => {
+          // Check if sticky cart needs to be recreated
+          if (!document.getElementById('hmstudio-sticky-cart')) {
+            this.createStickyCart();
+          }
+
+          // Check if timer needs to be updated (only if there's an active campaign)
+          if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+            const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
+            if (activeCampaign) {
+              this.setupProductTimer();
+              if (this.activeTimers.size > 0 && !this.updateInterval) {
+                this.startTimerUpdates();
+              }
+            }
+          }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+      } else if (document.querySelector('.product-item')) {
+        console.log('On product listing page, setting up card timers');
+        this.setupProductCardTimers();
+
+        if (this.activeTimers.size > 0) {
+          this.startTimerUpdates();
+        }
+
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.addedNodes.length) {
+              this.setupProductCardTimers();
+              if (this.activeTimers.size > 0 && !this.updateInterval) {
+                this.startTimerUpdates();
+              }
+            }
           });
-  
-          observer.observe(document.body, { childList: true, subtree: true });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
       }
-  }
+    }
   };
 
   window.addEventListener('beforeunload', () => {
