@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.9.7
+// src/scripts/smartCart.js v1.9.8
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -608,162 +608,96 @@
     },
 
     setupProductCardTimers() {
-      const productCardSelectors = [
-          '.product-item',  // Soft theme
-          '.card.card-product'  // Perfect theme
-      ];
-  
-      let productCards = [];
+      let productCards = document.querySelectorAll('.product-item, .card.card-product');
+
+if (productCards.length === 0) {
+    console.warn('No product cards found. Check your selectors.');
+} else {
+    console.log(`${productCards.length} product cards found.`);
+}
+
       const processedCards = new Set();
       
-      // Try each selector
-      for (const selector of productCardSelectors) {
-          const cards = document.querySelectorAll(selector);
-          if (cards.length > 0) {
-              productCards = cards;
-              break;
-          }
-      }
-  
       productCards.forEach(card => {
-          let productId = null;
-          
-          // Try multiple selectors for product ID
-          const idSelectors = [
-              '[data-wishlist-id]',
-              'input[name="product_id"]',
-              '#product-id',
-              '.js-add-to-cart'
-          ];
-  
-          for (const selector of idSelectors) {
-              const element = card.querySelector(selector);
-              if (element) {
-                  productId = element.getAttribute('data-wishlist-id') || 
-                             element.getAttribute('data-product-id') || 
-                             element.getAttribute('value');
-                  if (productId) break;
-              }
+        let productId = null;
+        const wishlistBtn = card.querySelector('[data-wishlist-id], input[name="product_id"], #product-id, .js-add-to-cart');
+        if (wishlistBtn) {
+          productId = wishlistBtn.getAttribute('data-wishlist-id');
+        }
+
+        if (productId && !processedCards.has(productId)) {
+          processedCards.add(productId);
+          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          if (activeCampaign) {
+            const timer = this.createProductCardTimer(activeCampaign, productId);
+            const imageContainer = card.querySelector('.content, .card-body, .product-content, .card-footer');
+            if (imageContainer && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
+              imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
+            }
           }
-  
-          if (productId && !processedCards.has(productId)) {
-              processedCards.add(productId);
-              const activeCampaign = this.findActiveCampaignForProduct(productId);
-              
-              if (activeCampaign) {
-                  const timer = this.createProductCardTimer(activeCampaign, productId);
-                  
-                  // Try multiple insertion points
-                  const insertionSelectors = [
-                      '.content',  // Soft theme
-                      '.card-body',  // Perfect theme
-                      '.product-content',
-                      '.card-footer'
-                  ];
-  
-                  let inserted = false;
-                  for (const selector of insertionSelectors) {
-                      const container = card.querySelector(selector);
-                      if (container && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
-                          container.parentNode.insertBefore(timer, container.nextSibling);
-                          inserted = true;
-                          break;
-                      }
-                  }
-  
-                  // Fallback insertion if needed
-                  if (!inserted) {
-                      card.appendChild(timer);
-                  }
-              }
-          }
+        }
       });
-  },
+    },
 
     setupProductTimer() {
       console.log('Setting up product timer...');
-  
-      // Support both Soft theme and Perfect theme selectors for product page detection
-      const isProductPage = document.querySelector('.product.products-details-page') || 
-                           document.querySelector('.js-details-section');
-      
-      if (isProductPage) {
-          console.log('On product page');
-          
-          // Enhanced product ID detection for both themes
-          let productId = null;
-          
-          // Try multiple selectors for product ID
-          const selectors = [
-              // Soft theme selectors
-              '[data-wishlist-id]',
-              'form[data-product-id]',
-              // Perfect theme selectors
-              'input[name="product_id"]',
-              '#product-id',
-              '.js-add-to-cart'
-          ];
-  
-          for (const selector of selectors) {
-              const element = document.querySelector(selector);
-              if (element) {
-                  productId = element.getAttribute('data-wishlist-id') || 
-                             element.getAttribute('data-product-id') || 
-                             element.getAttribute('value');
-                  if (productId) break;
-              }
-          }
-  
-          if (!productId) {
-              return;
-          }
-  
-          this.currentProductId = productId;
-          const activeCampaign = this.findActiveCampaignForProduct(productId);
-  
-          if (!activeCampaign) {
-              return;
-          }
-  
-          const timer = this.createCountdownTimer(activeCampaign, productId);
-  
-          // Try multiple insertion points for different themes
-          const insertionPoints = [
-              // Soft theme selectors
-              '.product-formatted-price',
-              '.product-price',
-              'h2.theme-text-primary',
-              '.theme-text-primary',
-              // Perfect theme selectors
-              '.card-body',
-              '.product-content',
-              '.card-footer'
-          ];
-  
-          let inserted = false;
-          for (const selector of insertionPoints) {
-              const container = document.querySelector(selector);
-              if (container?.parentElement) {
-                  container.parentElement.insertBefore(timer, container);
-                  inserted = true;
-                  console.log(`Timer inserted at ${selector}`);
-                  break;
-              }
-          }
-  
-          // Fallback insertion
-          if (!inserted) {
-              const productDetails = document.querySelector('.products-details') || 
-                                   document.querySelector('.js-details-section');
-              if (productDetails) {
-                  productDetails.insertBefore(timer, productDetails.firstChild);
-              }
-          }
-  
-          // Create sticky cart after setting up timer
-          this.createStickyCart();
+
+      let productId;
+      const wishlistBtn = document.querySelector('[data-wishlist-id]');
+      if (wishlistBtn) {
+        productId = wishlistBtn.getAttribute('data-wishlist-id');
       }
-  },
+
+      if (!productId) {
+        const productForm = document.querySelector('form[data-product-id]');
+        if (productForm) {
+          productId = productForm.getAttribute('data-product-id');
+        }
+      }
+
+      if (!productId) {
+        return;
+      }
+
+      this.currentProductId = productId;
+      const activeCampaign = this.findActiveCampaignForProduct(productId);
+
+      if (!activeCampaign) {
+        return;
+      }
+
+      const timer = this.createCountdownTimer(activeCampaign, productId);
+
+      const priceSelectors = [
+        'h2.product-formatted-price.theme-text-primary',
+        '.product-formatted-price',
+        '.product-formatted-price.theme-text-primary',
+        '.product-price',
+        'h2.theme-text-primary',
+        '.theme-text-primary'
+      ];
+
+      let inserted = false;
+      for (const selector of priceSelectors) {
+        const priceContainer = document.querySelector(selector);
+        
+        if (priceContainer?.parentElement) {
+          priceContainer.parentElement.insertBefore(timer, priceContainer);
+          inserted = true;
+          break;
+        }
+      }
+
+      if (!inserted) {
+        const productDetails = document.querySelector('.products-details');
+        if (productDetails) {
+          productDetails.insertBefore(timer, productDetails.firstChild);
+        }
+      }
+
+      // Create sticky cart after setting up timer
+      this.createStickyCart();
+    },
 
     startTimerUpdates() {
       if (this.updateInterval) {
@@ -784,139 +718,68 @@
       
       this.stopTimerUpdates();
       
-      // Support both Soft theme and Perfect theme product page detection
-      const isProductPage = document.querySelector('.product.products-details-page') || 
-                           document.querySelector('.js-details-section');
-      
-      if (isProductPage) {
-          console.log('On product page');
-          // Create sticky cart regardless of campaigns
-          this.createStickyCart();
-  
-          // Setup timer if there's an active campaign
-          let productId = null;
-          const selectors = [
-              '[data-wishlist-id]',
-              'form[data-product-id]',
-              'input[name="product_id"]',
-              '#product-id',
-              '.js-add-to-cart'
-          ];
-  
-          for (const selector of selectors) {
-              const element = document.querySelector(selector);
-              if (element) {
-                  productId = element.getAttribute('data-wishlist-id') || 
-                             element.getAttribute('data-product-id') || 
-                             element.getAttribute('value');
-                  if (productId) break;
+      if (document.querySelector('.product.products-details-page, .js-details-section')) {
+        console.log('On product page');
+        // Create sticky cart regardless of campaigns
+        this.createStickyCart();
+
+        // Setup timer if there's an active campaign
+        const wishlistBtn = document.querySelector('[data-wishlist-id], input[name="product_id"], #product-id, .js-add-to-cart');
+        const productForm = document.querySelector('form[data-product-id]');
+        const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
+                       productForm?.getAttribute('data-product-id');
+
+        if (productId) {
+          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          if (activeCampaign) {
+            this.setupProductTimer();
+            if (this.activeTimers.size > 0) {
+              this.startTimerUpdates();
+            }
+          }
+        }
+
+        const observer = new MutationObserver((mutations) => {
+          // Check if sticky cart needs to be recreated
+          if (!document.getElementById('hmstudio-sticky-cart')) {
+            this.createStickyCart();
+          }
+
+          // Check if timer needs to be updated (only if there's an active campaign)
+          if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+            const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
+            if (activeCampaign) {
+              this.setupProductTimer();
+              if (this.activeTimers.size > 0 && !this.updateInterval) {
+                this.startTimerUpdates();
               }
+            }
           }
-  
-          if (productId) {
-              const activeCampaign = this.findActiveCampaignForProduct(productId);
-              if (activeCampaign) {
-                  this.setupProductTimer();
-                  if (this.activeTimers.size > 0) {
-                      this.startTimerUpdates();
-                  }
-              }
-          }
-  
-          // More specific observer to prevent infinite loops
-          const observer = new MutationObserver((mutations) => {
-              mutations.forEach(mutation => {
-                  // Only process if our timer or sticky cart was actually removed
-                  const wasTimerRemoved = Array.from(mutation.removedNodes).some(node => 
-                      node.id === `hmstudio-countdown-${this.currentProductId}`
-                  );
-                  const wasStickyCartRemoved = Array.from(mutation.removedNodes).some(node => 
-                      node.id === 'hmstudio-sticky-cart'
-                  );
-  
-                  if (wasStickyCartRemoved) {
-                      this.createStickyCart();
-                  }
-  
-                  if (wasTimerRemoved && this.currentProductId) {
-                      const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
-                      if (activeCampaign) {
-                          this.setupProductTimer();
-                          if (this.activeTimers.size > 0 && !this.updateInterval) {
-                              this.startTimerUpdates();
-                          }
-                      }
-                  }
-              });
-          });
-  
-          // Observe only specific parts of the DOM
-          const targetNode = document.querySelector('.products-details') || 
-                            document.querySelector('.js-details-section');
-          if (targetNode) {
-              observer.observe(targetNode, { 
-                  childList: true, 
-                  subtree: true 
-              });
-          }
-  
-      } else {
-          // Product listing page
-          const productListingSelectors = ['.product-item', '.card.card-product'];
-          let hasProductListing = false;
-          
-          for (const selector of productListingSelectors) {
-              if (document.querySelector(selector)) {
-                  hasProductListing = true;
-                  break;
-              }
-          }
-  
-          if (hasProductListing) {
-              console.log('On product listing page, setting up card timers');
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+      } else if (document.querySelector('.product-item, .card.card-product')) {
+        console.log('On product listing page, setting up card timers');
+        this.setupProductCardTimers();
+
+        if (this.activeTimers.size > 0) {
+          this.startTimerUpdates();
+        }
+
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.addedNodes.length) {
               this.setupProductCardTimers();
-  
-              if (this.activeTimers.size > 0) {
-                  this.startTimerUpdates();
+              if (this.activeTimers.size > 0 && !this.updateInterval) {
+                this.startTimerUpdates();
               }
-  
-              // More specific observer for product listing
-              const listingObserver = new MutationObserver((mutations) => {
-                  let shouldUpdate = false;
-                  mutations.forEach((mutation) => {
-                      // Check if new products were actually added
-                      const addedProducts = Array.from(mutation.addedNodes).some(node => {
-                          return node.classList && (
-                              node.classList.contains('product-item') || 
-                              node.classList.contains('card-product')
-                          );
-                      });
-  
-                      if (addedProducts) {
-                          shouldUpdate = true;
-                      }
-                  });
-  
-                  if (shouldUpdate) {
-                      this.setupProductCardTimers();
-                      if (this.activeTimers.size > 0 && !this.updateInterval) {
-                          this.startTimerUpdates();
-                      }
-                  }
-              });
-  
-              // Observe only the product container
-              const productContainer = document.querySelector('.products-container') || 
-                                     document.querySelector('.product-listing');
-              if (productContainer) {
-                  listingObserver.observe(productContainer, { 
-                      childList: true, 
-                      subtree: true 
-                  });
-              }
-          }
+            }
+          });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
       }
-  }
+    }
   };
 
   window.addEventListener('beforeunload', () => {
