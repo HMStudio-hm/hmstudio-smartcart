@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.8.4
+// src/scripts/smartCart.js v1.8.5
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -608,74 +608,29 @@
     },
 
     setupProductCardTimers() {
-      console.log('On product listing page, setting up card timers');
-      
-      // Support both Soft theme and Perfect theme selectors
-      const productCardSelectors = [
-          '.product-item', // Soft theme
-          '.card.card-product' // Perfect theme
-      ];
-
-      let productCards = [];
+      const productCards = document.querySelectorAll('.card.card-product');
       const processedCards = new Set();
-
-      // Try each selector
-      for (const selector of productCardSelectors) {
-          const cards = document.querySelectorAll(selector);
-          if (cards.length > 0) {
-              productCards = cards;
-              break;
-          }
-      }
-
+      
       productCards.forEach(card => {
-          let productId = null;
-          const wishlistBtn = card.querySelector('[data-wishlist-id]');
-          if (wishlistBtn) {
-              productId = wishlistBtn.getAttribute('data-wishlist-id');
-          }
+        let productId = null;
+        const wishlistBtn = card.querySelector('[data-wishlist-id]');
+        if (wishlistBtn) {
+          productId = wishlistBtn.getAttribute('data-wishlist-id');
+        }
 
-          if (productId && !processedCards.has(productId)) {
-              processedCards.add(productId);
-              const activeCampaign = this.findActiveCampaignForProduct(productId);
-              
-              if (activeCampaign) {
-                  const timer = this.createProductCardTimer(activeCampaign, productId);
-                  
-                  // Try to find insertion points in both themes
-                  const imageContainer = card.querySelector('.content'); // Soft theme
-                  const cardBody = card.querySelector('.card-body'); // Perfect theme
-                  
-                  if (imageContainer) {
-                      // Soft theme insertion
-                      if (!document.getElementById(`hmstudio-card-countdown-${productId}`)) {
-                          imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
-                      }
-                  } else if (cardBody) {
-                      // Perfect theme insertion - before the card body
-                      if (!document.getElementById(`hmstudio-card-countdown-${productId}`)) {
-                          cardBody.parentNode.insertBefore(timer, cardBody);
-                      }
-                  } else {
-                      // Fallback - find the product name container
-                      const productName = card.querySelector('.card-body.list-group');
-                      if (productName && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
-                          productName.parentNode.insertBefore(timer, productName);
-                      }
-                  }
-
-                  // Additional styling for Perfect theme
-                  if (card.classList.contains('card-product')) {
-                      timer.style.cssText += `
-                          margin: 0 !important;
-                          border-radius: 0 !important;
-                          width: 100% !important;
-                      `;
-                  }
-              }
+        if (productId && !processedCards.has(productId)) {
+          processedCards.add(productId);
+          const activeCampaign = this.findActiveCampaignForProduct(productId);
+          if (activeCampaign) {
+            const timer = this.createProductCardTimer(activeCampaign, productId);
+            const imageContainer = card.querySelector('.!js-card-top');
+            if (imageContainer && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
+              imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
+            }
           }
+        }
       });
-  },
+    },
 
     setupProductTimer() {
       console.log('Setting up product timer...');
