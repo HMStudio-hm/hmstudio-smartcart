@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.9.5
+// src/scripts/smartCart.js v1.9.6
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -784,68 +784,88 @@
       
       this.stopTimerUpdates();
       
-      if (document.querySelector('.product.products-details-page')) {
-        console.log('On product page');
-        // Create sticky cart regardless of campaigns
-        this.createStickyCart();
-
-        // Setup timer if there's an active campaign
-        const wishlistBtn = document.querySelector('[data-wishlist-id]');
-        const productForm = document.querySelector('form[data-product-id]');
-        const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
-                       productForm?.getAttribute('data-product-id');
-
-        if (productId) {
-          const activeCampaign = this.findActiveCampaignForProduct(productId);
-          if (activeCampaign) {
-            this.setupProductTimer();
-            if (this.activeTimers.size > 0) {
-              this.startTimerUpdates();
-            }
-          }
-        }
-
-        const observer = new MutationObserver((mutations) => {
-          // Check if sticky cart needs to be recreated
-          if (!document.getElementById('hmstudio-sticky-cart')) {
-            this.createStickyCart();
-          }
-
-          // Check if timer needs to be updated (only if there's an active campaign)
-          if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-            const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
-            if (activeCampaign) {
-              this.setupProductTimer();
-              if (this.activeTimers.size > 0 && !this.updateInterval) {
-                this.startTimerUpdates();
+      // Support both Soft theme and Perfect theme product page detection
+      const isProductPage = document.querySelector('.product.products-details-page') || 
+                           document.querySelector('.js-details-section');
+      
+      if (isProductPage) {
+          console.log('On product page');
+          // Create sticky cart regardless of campaigns
+          this.createStickyCart();
+  
+          // Setup timer if there's an active campaign
+          // Enhanced product ID detection for both themes
+          let productId = null;
+          const selectors = [
+              '[data-wishlist-id]',
+              'form[data-product-id]',
+              'input[name="product_id"]',
+              '#product-id',
+              '.js-add-to-cart'
+          ];
+  
+          for (const selector of selectors) {
+              const element = document.querySelector(selector);
+              if (element) {
+                  productId = element.getAttribute('data-wishlist-id') || 
+                             element.getAttribute('data-product-id') || 
+                             element.getAttribute('value');
+                  if (productId) break;
               }
-            }
           }
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-      } else if (document.querySelector('.product-item')) {
-        console.log('On product listing page, setting up card timers');
-        this.setupProductCardTimers();
-
-        if (this.activeTimers.size > 0) {
-          this.startTimerUpdates();
-        }
-
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            if (mutation.addedNodes.length) {
-              this.setupProductCardTimers();
-              if (this.activeTimers.size > 0 && !this.updateInterval) {
-                this.startTimerUpdates();
+  
+          if (productId) {
+              const activeCampaign = this.findActiveCampaignForProduct(productId);
+              if (activeCampaign) {
+                  this.setupProductTimer();
+                  if (this.activeTimers.size > 0) {
+                      this.startTimerUpdates();
+                  }
               }
-            }
+          }
+  
+          const observer = new MutationObserver((mutations) => {
+              // Check if sticky cart needs to be recreated
+              if (!document.getElementById('hmstudio-sticky-cart')) {
+                  this.createStickyCart();
+              }
+  
+              // Check if timer needs to be updated (only if there's an active campaign)
+              if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+                  const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
+                  if (activeCampaign) {
+                      this.setupProductTimer();
+                      if (this.activeTimers.size > 0 && !this.updateInterval) {
+                          this.startTimerUpdates();
+                      }
+                  }
+              }
           });
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
+  
+          observer.observe(document.body, { childList: true, subtree: true });
+      } else if (document.querySelector('.product-item') || document.querySelector('.card.card-product')) {
+          // Support both themes for product listing pages
+          console.log('On product listing page, setting up card timers');
+          this.setupProductCardTimers();
+  
+          if (this.activeTimers.size > 0) {
+              this.startTimerUpdates();
+          }
+  
+          const observer = new MutationObserver((mutations) => {
+              mutations.forEach((mutation) => {
+                  if (mutation.addedNodes.length) {
+                      this.setupProductCardTimers();
+                      if (this.activeTimers.size > 0 && !this.updateInterval) {
+                          this.startTimerUpdates();
+                      }
+                  }
+              });
+          });
+  
+          observer.observe(document.body, { childList: true, subtree: true });
       }
-    }
+  }
   };
 
   window.addEventListener('beforeunload', () => {
