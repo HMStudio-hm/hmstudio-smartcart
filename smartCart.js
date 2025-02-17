@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.9.0
+// src/scripts/smartCart.js v1.9.1
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -424,58 +424,46 @@
     createProductCardTimer(campaign, productId) {
       const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
       if (existingTimer) {
-        return existingTimer;
+        existingTimer.remove();
       }
-
+    
       const container = document.createElement('div');
       container.id = `hmstudio-card-countdown-${productId}`;
       container.style.cssText = `
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
-        padding: 4px;
-        margin-top: 30px !important;
-        border-bottom-right-radius: 8px;
-        border-bottom-left-radius: 8px;
+        padding: 8px;
+        margin: 8px 0;
+        border-radius: 4px;
         text-align: center;
         direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 4px;
-        font-size: ${isMobile() ? '10px' : '12px'};
+        font-size: 12px;
         width: 100%;
-        overflow: hidden;
+        z-index: 10;
+        position: relative;
       `;
-
+    
       const timeElement = document.createElement('div');
       timeElement.style.cssText = `
         display: flex;
         align-items: center;
         justify-content: center;
-        flex-wrap: wrap;
-        gap: ${isMobile() ? '2px' : '4px'};
+        gap: 4px;
       `;
-
+    
       container.appendChild(timeElement);
-
-      let endTime = campaign.endTime?._seconds ? 
-        new Date(campaign.endTime._seconds * 1000) :
-        new Date(campaign.endTime.seconds * 1000);
-
-      const startTime = campaign.startTime?._seconds ? 
-        new Date(campaign.startTime._seconds * 1000) :
-        new Date(campaign.startTime.seconds * 1000);
-
-      const originalDuration = endTime - startTime;
-
+    
       this.activeTimers.set(`card-${productId}`, {
         element: timeElement,
-        endTime: endTime,
+        endTime: new Date(campaign.endTime._seconds * 1000),
         campaign: campaign,
-        originalDuration: originalDuration,
         isFlashing: false
       });
-
+    
       return container;
     },
 
@@ -610,6 +598,14 @@
 
     setupProductCardTimers() {
       console.log('Setting up product card timers...');
+      // At the start of the function
+  // Clear existing timers for products that might be reprocessed
+  const existingTimers = document.querySelectorAll('[id^="hmstudio-card-countdown-"]');
+  existingTimers.forEach(timer => {
+    const productId = timer.id.replace('hmstudio-card-countdown-', '');
+    this.activeTimers.delete(`card-${productId}`);
+    timer.remove();
+  });
       
       // Support both themes' product card structures
       const productCardSelectors = [
@@ -656,39 +652,66 @@
               console.log('Created timer for product card');
     
               // Define insertion points here, inside the scope where we need them
-              const insertionPoints = [
-                '.content', // Soft theme
-                '.card-body', // Perfect theme
-                '.product-content', // Generic fallback
-                '.card-footer',  // Perfect theme alternate
-                '.hmstudio-buttons-container', // Another possible container
-                '.border-0.border-secondary.border-opacity-10' // Perfect theme price container
-              ];
-    
-              let inserted = false;
-              for (const point of insertionPoints) {
-                const container = card.querySelector(point);
-                if (container) {
-                  const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-                  if (!existingTimer) {
-                    // Try inserting after the container first
-                    if (container.nextSibling) {
-                      container.parentNode.insertBefore(timer, container.nextSibling);
-                    } else {
-                      // If there's no next sibling, append to the container
-                      container.appendChild(timer);
+              const insertTimer = (card, timer, productId) => {
+                // Try different insertion points in order of preference
+                const insertionPoints = [
+                  {
+                    selector: '.card-body',
+                    method: 'append'
+                  },
+                  {
+                    selector: '.js-card-top',
+                    method: 'after'
+                  },
+                  {
+                    selector: '.border-0.border-secondary.border-opacity-10',
+                    method: 'before'
+                  },
+                  {
+                    selector: '.card-footer',
+                    method: 'prepend'
+                  }
+                ];
+              
+                for (const point of insertionPoints) {
+                  const container = card.querySelector(point.selector);
+                  if (container) {
+                    const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
+                    if (existingTimer) {
+                      existingTimer.remove();
                     }
-                    console.log('Timer inserted into product card using selector:', point);
-                    inserted = true;
-                    break;
+              
+                    switch (point.method) {
+                      case 'append':
+                        container.appendChild(timer);
+                        break;
+                      case 'prepend':
+                        container.insertBefore(timer, container.firstChild);
+                        break;
+                      case 'after':
+                        container.parentNode.insertBefore(timer, container.nextSibling);
+                        break;
+                      case 'before':
+                        container.parentNode.insertBefore(timer, container);
+                        break;
+                    }
+                    console.log(`Timer inserted using selector: ${point.selector} with method: ${point.method}`);
+                    return true;
                   }
                 }
-              }
-    
-              if (!inserted) {
-                // Fallback: try to insert at the start of the card
+              
+                // Fallback: insert at the start of the card
                 card.insertBefore(timer, card.firstChild);
                 console.log('Timer inserted at start of card (fallback)');
+                return true;
+              };
+              
+              // In your card processing loop:
+              if (productId && activeCampaign) {
+                const timer = this.createProductCardTimer(activeCampaign, productId);
+                if (timer) {
+                  insertTimer(card, timer, productId);
+                }
               }
             }
           } else {
@@ -822,6 +845,20 @@
       console.log('Initializing Smart Cart with campaigns:', this.campaigns);
       
       this.stopTimerUpdates();
+
+      // Add these styles to ensure timers are visible
+  const style = document.createElement('style');
+  style.textContent = `
+    .card.card-product {
+      overflow: visible !important;
+    }
+    [id^="hmstudio-card-countdown-"] {
+      opacity: 1 !important;
+      visibility: visible !important;
+      display: flex !important;
+    }
+  `;
+  document.head.appendChild(style);
     
       // Card selectors for both themes
       const productCardSelectors = [
