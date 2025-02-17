@@ -1,7 +1,11 @@
-// src/scripts/smartCart.js v1.8.7
+// src/scripts/smartCart.js v1.8.8
 // HMStudio Smart Cart with Campaign Support
 
-(function() {
+(() => {
+  window.addEventListener('error', (event) => {
+    console.error('Caught error:', event.error);
+  });
+
   console.log('Smart Cart script initialized');
 
   function getStoreIdFromUrl() {
@@ -806,66 +810,58 @@
       
       this.stopTimerUpdates();
       
-      if (document.querySelector('.product.products-details-page')) {
-        console.log('On product page');
+      // Check if we're on a product page
+      const isProductPage = document.querySelector('.product.products-details-page') || 
+                           document.querySelector('.js-details-section');
+      console.log('Is product page:', isProductPage);
+      
+      if (isProductPage) {
+        console.log('On product page, setting up timer');
         // Create sticky cart regardless of campaigns
         this.createStickyCart();
-
+    
         // Setup timer if there's an active campaign
-        const wishlistBtn = document.querySelector('[data-wishlist-id]');
-        const productForm = document.querySelector('form[data-product-id]');
-        const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
-                       productForm?.getAttribute('data-product-id');
-
-        if (productId) {
-          const activeCampaign = this.findActiveCampaignForProduct(productId);
-          if (activeCampaign) {
-            this.setupProductTimer();
-            if (this.activeTimers.size > 0) {
-              this.startTimerUpdates();
-            }
-          }
+        this.setupProductTimer();
+      } else {
+        // Check if we're on a product listing page
+        const hasProductCards = document.querySelector('.product-item') || 
+                              document.querySelector('.card.card-product');
+        console.log('Has product cards:', hasProductCards);
+        
+        if (hasProductCards) {
+          console.log('On product listing page, setting up card timers');
+          this.setupProductCardTimers();
         }
-
-        const observer = new MutationObserver((mutations) => {
+      }
+    
+      // Add observer to handle dynamic content changes
+      const observer = new MutationObserver((mutations) => {
+        console.log('DOM mutation observed');
+        if (isProductPage) {
           // Check if sticky cart needs to be recreated
           if (!document.getElementById('hmstudio-sticky-cart')) {
+            console.log('Recreating sticky cart');
             this.createStickyCart();
           }
-
-          // Check if timer needs to be updated (only if there's an active campaign)
+    
+          // Check if timer needs to be updated
           if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-            const activeCampaign = this.findActiveCampaignForProduct(this.currentProductId);
-            if (activeCampaign) {
-              this.setupProductTimer();
-              if (this.activeTimers.size > 0 && !this.updateInterval) {
-                this.startTimerUpdates();
-              }
-            }
+            console.log('Recreating product timer');
+            this.setupProductTimer();
           }
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-      } else if (document.querySelector('.product-item')) {
-        console.log('On product listing page, setting up card timers');
-        this.setupProductCardTimers();
-
-        if (this.activeTimers.size > 0) {
-          this.startTimerUpdates();
+        } else if (hasProductCards) {
+          console.log('Updating product card timers');
+          this.setupProductCardTimers();
         }
-
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            if (mutation.addedNodes.length) {
-              this.setupProductCardTimers();
-              if (this.activeTimers.size > 0 && !this.updateInterval) {
-                this.startTimerUpdates();
-              }
-            }
-          });
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
+      });
+    
+      observer.observe(document.body, { childList: true, subtree: true });
+      console.log('Mutation observer set up');
+    
+      // Start timer updates if needed
+      if (this.activeTimers.size > 0) {
+        console.log('Starting timer updates');
+        this.startTimerUpdates();
       }
     }
   };
