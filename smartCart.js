@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.9.2
+// src/scripts/smartCart.js v1.9.3
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -66,6 +66,12 @@
     activeTimers: new Map(),
     updateInterval: null,
     originalDurations: new Map(),
+    // Add product card selectors as a class property
+    productCardSelectors: [
+      '.product-item',              // Soft theme
+      '.card.card-product',         // Perfect theme
+      '.js-card-item'               // Generic selector
+    ],
 
     createStickyCart() {
       if (this.stickyCartElement) {
@@ -819,25 +825,19 @@
         console.log('On product page, setting up timer');
         // Create sticky cart regardless of campaigns
         this.createStickyCart();
-    
+  
         // Setup timer if there's an active campaign
         this.setupProductTimer();
       } else {
-        // Check if we're on a product listing page using expanded selectors
-        const productCardSelectors = [
-          '.product-item',              // Soft theme
-          '.card.card-product',         // Perfect theme
-          '.js-card-item'              // Generic selector
-        ];
-    
+        // Check if we're on a product listing page using class property
         let hasProductCards = false;
-        for (const selector of productCardSelectors) {
+        for (const selector of this.productCardSelectors) {
           if (document.querySelector(selector)) {
             hasProductCards = true;
             break;
           }
         }
-    
+  
         console.log('Has product cards:', hasProductCards);
         
         if (hasProductCards) {
@@ -845,7 +845,7 @@
           this.setupProductCardTimers();
         }
       }
-    
+  
       // Add observer to handle dynamic content changes
       const observer = new MutationObserver((mutations) => {
         try {
@@ -855,17 +855,17 @@
           const currentIsProductPage = document.querySelector('.product.products-details-page') || 
                                      document.querySelector('.js-details-section');
           
-          const currentHasProductCards = productCardSelectors.some(selector => 
+          const currentHasProductCards = this.productCardSelectors.some(selector => 
             document.querySelector(selector)
           );
-    
+  
           if (currentIsProductPage) {
             // Check if sticky cart needs to be recreated
             if (!document.getElementById('hmstudio-sticky-cart')) {
               console.log('Recreating sticky cart');
               this.createStickyCart();
             }
-    
+  
             // Check if timer needs to be updated
             if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
               console.log('Recreating product timer');
@@ -879,19 +879,19 @@
           console.error('Error in mutation observer:', error);
         }
       });
-    
+  
       observer.observe(document.body, { 
         childList: true, 
         subtree: true 
       });
       console.log('Mutation observer set up');
-    
+  
       // Start timer updates if needed
       if (this.activeTimers.size > 0) {
         console.log('Starting timer updates');
         this.startTimerUpdates();
       }
-    }
+    },
   };
 
   window.addEventListener('beforeunload', () => {
