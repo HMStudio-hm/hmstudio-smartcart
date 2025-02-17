@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.8.5
+// src/scripts/smartCart.js v1.8.6
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -608,7 +608,7 @@
     },
 
     setupProductCardTimers() {
-      const productCards = document.querySelectorAll('.card.card-product');
+      const productCards = document.querySelectorAll('.card card-product bg-transparent border-secondary border-opacity-25 rounded-3 h-100 js-card-item');
       const processedCards = new Set();
       
       productCards.forEach(card => {
@@ -623,7 +623,7 @@
           const activeCampaign = this.findActiveCampaignForProduct(productId);
           if (activeCampaign) {
             const timer = this.createProductCardTimer(activeCampaign, productId);
-            const imageContainer = card.querySelector('.!js-card-top');
+            const imageContainer = card.querySelector('.card-body list-group list-group-flush px-0 border-0 py-0');
             if (imageContainer && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
               imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
             }
