@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.7.9
+// src/scripts/smartCart.js v1.8.0
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -640,6 +640,13 @@
       const productForm = document.querySelector('form[data-product-id]');
       const productInput = document.querySelector('input[name="product_id"]');
   
+      // Add debug logs
+      console.log('Found elements:', {
+          wishlistBtn: !!wishlistBtn,
+          productForm: !!productForm,
+          productInput: !!productInput
+      });
+  
       if (wishlistBtn) {
           productId = wishlistBtn.getAttribute('data-wishlist-id');
       } else if (productForm) {
@@ -648,14 +655,20 @@
           productId = productInput.value;
       }
   
+      console.log('Found Product ID:', productId);
+  
       if (!productId) {
+          console.log('No product ID found, returning');
           return;
       }
   
       this.currentProductId = productId;
       const activeCampaign = this.findActiveCampaignForProduct(productId);
   
+      console.log('Active Campaign:', activeCampaign);
+  
       if (!activeCampaign) {
+          console.log('No active campaign found, returning');
           return;
       }
   
@@ -663,6 +676,8 @@
   
       // Find the target card element
       const targetCard = document.querySelector('.card.border-0.mb-3.p-0');
+      console.log('Found target card:', !!targetCard);
+  
       if (targetCard) {
           // Insert timer before the card
           targetCard.parentNode.insertBefore(timer, targetCard);
