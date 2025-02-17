@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.9.1
+// src/scripts/smartCart.js v1.9.2
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -424,46 +424,58 @@
     createProductCardTimer(campaign, productId) {
       const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
       if (existingTimer) {
-        existingTimer.remove();
+        return existingTimer;
       }
-    
+
       const container = document.createElement('div');
       container.id = `hmstudio-card-countdown-${productId}`;
       container.style.cssText = `
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
-        padding: 8px;
-        margin: 8px 0;
-        border-radius: 4px;
+        padding: 4px;
+        margin-top: 30px !important;
+        border-bottom-right-radius: 8px;
+        border-bottom-left-radius: 8px;
         text-align: center;
         direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 4px;
-        font-size: 12px;
+        font-size: ${isMobile() ? '10px' : '12px'};
         width: 100%;
-        z-index: 10;
-        position: relative;
+        overflow: hidden;
       `;
-    
+
       const timeElement = document.createElement('div');
       timeElement.style.cssText = `
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        flex-wrap: wrap;
+        gap: ${isMobile() ? '2px' : '4px'};
       `;
-    
+
       container.appendChild(timeElement);
-    
+
+      let endTime = campaign.endTime?._seconds ? 
+        new Date(campaign.endTime._seconds * 1000) :
+        new Date(campaign.endTime.seconds * 1000);
+
+      const startTime = campaign.startTime?._seconds ? 
+        new Date(campaign.startTime._seconds * 1000) :
+        new Date(campaign.startTime.seconds * 1000);
+
+      const originalDuration = endTime - startTime;
+
       this.activeTimers.set(`card-${productId}`, {
         element: timeElement,
-        endTime: new Date(campaign.endTime._seconds * 1000),
+        endTime: endTime,
         campaign: campaign,
+        originalDuration: originalDuration,
         isFlashing: false
       });
-    
+
       return container;
     },
 
@@ -598,14 +610,6 @@
 
     setupProductCardTimers() {
       console.log('Setting up product card timers...');
-      // At the start of the function
-  // Clear existing timers for products that might be reprocessed
-  const existingTimers = document.querySelectorAll('[id^="hmstudio-card-countdown-"]');
-  existingTimers.forEach(timer => {
-    const productId = timer.id.replace('hmstudio-card-countdown-', '');
-    this.activeTimers.delete(`card-${productId}`);
-    timer.remove();
-  });
       
       // Support both themes' product card structures
       const productCardSelectors = [
@@ -613,6 +617,8 @@
         '.card.card-product' // Perfect theme
       ];
     
+      const processedCards = new Set();
+      
       productCardSelectors.forEach(selector => {
         const productCards = document.querySelectorAll(selector);
         console.log(`Found ${productCards.length} cards with selector: ${selector}`);
@@ -641,8 +647,9 @@
             }
           }
     
-          if (productId) {
+          if (productId && !processedCards.has(productId)) {
             console.log('Processing product ID:', productId);
+            processedCards.add(productId);
             
             const activeCampaign = this.findActiveCampaignForProduct(productId);
             console.log('Active campaign for product:', activeCampaign);
@@ -651,71 +658,28 @@
               const timer = this.createProductCardTimer(activeCampaign, productId);
               console.log('Created timer for product card');
     
-              // Define insertion points here, inside the scope where we need them
-              const insertTimer = (card, timer, productId) => {
-                // Try different insertion points in order of preference
-                const insertionPoints = [
-                  {
-                    selector: '.card-body',
-                    method: 'append'
-                  },
-                  {
-                    selector: '.js-card-top',
-                    method: 'after'
-                  },
-                  {
-                    selector: '.border-0.border-secondary.border-opacity-10',
-                    method: 'before'
-                  },
-                  {
-                    selector: '.card-footer',
-                    method: 'prepend'
+              // Try multiple selectors for insertion point
+              const insertionPoints = [
+                '.content', // Soft theme
+                '.card-body', // Perfect theme
+                '.product-content', // Generic fallback
+                '.card-footer'  // Perfect theme alternate
+              ];
+    
+              for (const selector of insertionPoints) {
+                const container = card.querySelector(selector);
+                if (container) {
+                  const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
+                  if (!existingTimer) {
+                    container.parentNode.insertBefore(timer, container.nextSibling);
+                    console.log('Timer inserted into product card');
                   }
-                ];
-              
-                for (const point of insertionPoints) {
-                  const container = card.querySelector(point.selector);
-                  if (container) {
-                    const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-                    if (existingTimer) {
-                      existingTimer.remove();
-                    }
-              
-                    switch (point.method) {
-                      case 'append':
-                        container.appendChild(timer);
-                        break;
-                      case 'prepend':
-                        container.insertBefore(timer, container.firstChild);
-                        break;
-                      case 'after':
-                        container.parentNode.insertBefore(timer, container.nextSibling);
-                        break;
-                      case 'before':
-                        container.parentNode.insertBefore(timer, container);
-                        break;
-                    }
-                    console.log(`Timer inserted using selector: ${point.selector} with method: ${point.method}`);
-                    return true;
-                  }
-                }
-              
-                // Fallback: insert at the start of the card
-                card.insertBefore(timer, card.firstChild);
-                console.log('Timer inserted at start of card (fallback)');
-                return true;
-              };
-              
-              // In your card processing loop:
-              if (productId && activeCampaign) {
-                const timer = this.createProductCardTimer(activeCampaign, productId);
-                if (timer) {
-                  insertTimer(card, timer, productId);
+                  break;
                 }
               }
             }
           } else {
-            console.log('No product ID found for card:', card);
+            console.log('No product ID found or card already processed');
           }
         });
       });
@@ -845,97 +809,82 @@
       console.log('Initializing Smart Cart with campaigns:', this.campaigns);
       
       this.stopTimerUpdates();
-
-      // Add these styles to ensure timers are visible
-  const style = document.createElement('style');
-  style.textContent = `
-    .card.card-product {
-      overflow: visible !important;
-    }
-    [id^="hmstudio-card-countdown-"] {
-      opacity: 1 !important;
-      visibility: visible !important;
-      display: flex !important;
-    }
-  `;
-  document.head.appendChild(style);
-    
-      // Card selectors for both themes
-      const productCardSelectors = [
-        '.product-item',                          // Soft theme
-        '.card.card-product',                     // Perfect theme
-        '.col .card',                             // Perfect theme alternate
-        '[data-wishlist-id]'                      // Generic product container
-      ];
-    
-      // Check if we're on a product detail page
-      const isProductPage = document.querySelector([
-        '.product.products-details-page',         // Soft theme
-        '.js-details-section',                    // Perfect theme
-        '#js-details-id',                         // Perfect theme alternate
-        '.products-details'                       // Generic product detail
-      ].join(','));
-    
-      console.log('Is product page:', !!isProductPage);
-    
+      
+      // Check if we're on a product page
+      const isProductPage = document.querySelector('.product.products-details-page') || 
+                           document.querySelector('.js-details-section');
+      console.log('Is product page:', isProductPage);
+      
       if (isProductPage) {
         console.log('On product page, setting up timer');
+        // Create sticky cart regardless of campaigns
         this.createStickyCart();
+    
+        // Setup timer if there's an active campaign
         this.setupProductTimer();
       } else {
-        // Check if we're on a product listing page by trying all selectors
+        // Check if we're on a product listing page using expanded selectors
+        const productCardSelectors = [
+          '.product-item',              // Soft theme
+          '.card.card-product',         // Perfect theme
+          '.js-card-item'              // Generic selector
+        ];
+    
         let hasProductCards = false;
         for (const selector of productCardSelectors) {
-          const cards = document.querySelectorAll(selector);
-          if (cards.length > 0) {
+          if (document.querySelector(selector)) {
             hasProductCards = true;
-            console.log(`Found ${cards.length} product cards with selector: ${selector}`);
             break;
           }
         }
     
+        console.log('Has product cards:', hasProductCards);
+        
         if (hasProductCards) {
           console.log('On product listing page, setting up card timers');
           this.setupProductCardTimers();
-    
-          if (this.activeTimers.size > 0) {
-            this.startTimerUpdates();
-          }
         }
       }
     
       // Add observer to handle dynamic content changes
       const observer = new MutationObserver((mutations) => {
-        mutations.forEach(mutation => {
-          if (mutation.type === 'childList' && mutation.addedNodes.length) {
-            const hasNewCards = [...mutation.addedNodes].some(node => {
-              if (node.nodeType === 1) { // Element node
-                return productCardSelectors.some(selector => 
-                  node.matches(selector) || node.querySelector(selector)
-                );
-              }
-              return false;
-            });
+        try {
+          console.log('DOM mutation observed');
+          
+          // Check page type again on each mutation
+          const currentIsProductPage = document.querySelector('.product.products-details-page') || 
+                                     document.querySelector('.js-details-section');
+          
+          const currentHasProductCards = productCardSelectors.some(selector => 
+            document.querySelector(selector)
+          );
     
-            if (hasNewCards) {
-              console.log('New product cards detected, updating timers');
-              this.setupProductCardTimers();
-              
-              if (this.activeTimers.size > 0 && !this.updateInterval) {
-                this.startTimerUpdates();
-              }
+          if (currentIsProductPage) {
+            // Check if sticky cart needs to be recreated
+            if (!document.getElementById('hmstudio-sticky-cart')) {
+              console.log('Recreating sticky cart');
+              this.createStickyCart();
             }
+    
+            // Check if timer needs to be updated
+            if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+              console.log('Recreating product timer');
+              this.setupProductTimer();
+            }
+          } else if (currentHasProductCards) {
+            console.log('Updating product card timers');
+            this.setupProductCardTimers();
           }
-        });
+        } catch (error) {
+          console.error('Error in mutation observer:', error);
+        }
       });
     
       observer.observe(document.body, { 
         childList: true, 
         subtree: true 
       });
-    
       console.log('Mutation observer set up');
-    
     
       // Start timer updates if needed
       if (this.activeTimers.size > 0) {
