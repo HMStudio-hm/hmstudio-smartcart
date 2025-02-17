@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.8.3
+// src/scripts/smartCart.js v1.8.4
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -421,65 +421,62 @@
     },
 
     createProductCardTimer(campaign, productId) {
-      console.log('Creating product card timer for:', productId);
       const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
       if (existingTimer) {
-          console.log('Timer already exists');
-          return existingTimer;
+        return existingTimer;
       }
-  
+
       const container = document.createElement('div');
       container.id = `hmstudio-card-countdown-${productId}`;
       container.style.cssText = `
-          background: ${campaign.timerSettings.backgroundColor};
-          color: ${campaign.timerSettings.textColor};
-          padding: 4px;
-          margin-top: 10px !important;
-          border-radius: 8px;
-          text-align: center;
-          direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          font-size: ${isMobile() ? '10px' : '12px'};
-          width: 100%;
-          overflow: hidden;
+        background: ${campaign.timerSettings.backgroundColor};
+        color: ${campaign.timerSettings.textColor};
+        padding: 4px;
+        margin-top: 30px !important;
+        border-bottom-right-radius: 8px;
+        border-bottom-left-radius: 8px;
+        text-align: center;
+        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        font-size: ${isMobile() ? '10px' : '12px'};
+        width: 100%;
+        overflow: hidden;
       `;
-  
+
       const timeElement = document.createElement('div');
       timeElement.style.cssText = `
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-wrap: wrap;
-          gap: ${isMobile() ? '2px' : '4px'};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: ${isMobile() ? '2px' : '4px'};
       `;
-  
+
       container.appendChild(timeElement);
-  
-      // Find product card container and insert timer after image
-      const productCard = document.querySelector(`.card-product img[alt="${productId}"]`)?.closest('.card-product');
-      if (productCard) {
-          const image = productCard.querySelector('img');
-          if (image) {
-              image.parentNode.insertBefore(container, image.nextSibling);
-          }
-      }
-  
+
       let endTime = campaign.endTime?._seconds ? 
-          new Date(campaign.endTime._seconds * 1000) :
-          new Date(campaign.endTime.seconds * 1000);
-  
+        new Date(campaign.endTime._seconds * 1000) :
+        new Date(campaign.endTime.seconds * 1000);
+
+      const startTime = campaign.startTime?._seconds ? 
+        new Date(campaign.startTime._seconds * 1000) :
+        new Date(campaign.startTime.seconds * 1000);
+
+      const originalDuration = endTime - startTime;
+
       this.activeTimers.set(`card-${productId}`, {
-          element: timeElement,
-          endTime: endTime,
-          campaign: campaign,
-          originalDuration: this.originalDurations.get(campaign.id)
+        element: timeElement,
+        endTime: endTime,
+        campaign: campaign,
+        originalDuration: originalDuration,
+        isFlashing: false
       });
-  
+
       return container;
-  },
+    },
 
     // Add keyframes for flashing animation
     addFlashingStyleIfNeeded() {
@@ -611,80 +608,134 @@
     },
 
     setupProductCardTimers() {
-      console.log('Setting up product card timers');
-      const productCards = document.querySelectorAll('.card.card-product');
-      console.log('Found product cards:', productCards.length);
-  
+      console.log('On product listing page, setting up card timers');
+      
+      // Support both Soft theme and Perfect theme selectors
+      const productCardSelectors = [
+          '.product-item', // Soft theme
+          '.card.card-product' // Perfect theme
+      ];
+
+      let productCards = [];
+      const processedCards = new Set();
+
+      // Try each selector
+      for (const selector of productCardSelectors) {
+          const cards = document.querySelectorAll(selector);
+          if (cards.length > 0) {
+              productCards = cards;
+              break;
+          }
+      }
+
       productCards.forEach(card => {
           let productId = null;
           const wishlistBtn = card.querySelector('[data-wishlist-id]');
           if (wishlistBtn) {
               productId = wishlistBtn.getAttribute('data-wishlist-id');
           }
-  
-          console.log('Processing card with product ID:', productId);
-  
-          if (productId) {
+
+          if (productId && !processedCards.has(productId)) {
+              processedCards.add(productId);
               const activeCampaign = this.findActiveCampaignForProduct(productId);
-              console.log('Active campaign for product:', productId, activeCampaign);
+              
               if (activeCampaign) {
-                  // Get the image container or image element
-                  const image = card.querySelector('img');
-                  if (image) {
-                      const timer = this.createProductCardTimer(activeCampaign, productId);
-                      image.parentNode.insertBefore(timer, image.nextSibling);
-                      console.log('Timer inserted for product:', productId);
+                  const timer = this.createProductCardTimer(activeCampaign, productId);
+                  
+                  // Try to find insertion points in both themes
+                  const imageContainer = card.querySelector('.content'); // Soft theme
+                  const cardBody = card.querySelector('.card-body'); // Perfect theme
+                  
+                  if (imageContainer) {
+                      // Soft theme insertion
+                      if (!document.getElementById(`hmstudio-card-countdown-${productId}`)) {
+                          imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
+                      }
+                  } else if (cardBody) {
+                      // Perfect theme insertion - before the card body
+                      if (!document.getElementById(`hmstudio-card-countdown-${productId}`)) {
+                          cardBody.parentNode.insertBefore(timer, cardBody);
+                      }
+                  } else {
+                      // Fallback - find the product name container
+                      const productName = card.querySelector('.card-body.list-group');
+                      if (productName && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
+                          productName.parentNode.insertBefore(timer, productName);
+                      }
+                  }
+
+                  // Additional styling for Perfect theme
+                  if (card.classList.contains('card-product')) {
+                      timer.style.cssText += `
+                          margin: 0 !important;
+                          border-radius: 0 !important;
+                          width: 100% !important;
+                      `;
                   }
               }
           }
       });
   },
 
-  setupProductTimer() {
-    console.log('Setting up product timer...');
+    setupProductTimer() {
+      console.log('Setting up product timer...');
 
-    let productId = null;
-    const wishlistBtn = document.querySelector('[data-wishlist-id]');
-    const productForm = document.querySelector('form[data-product-id]');
-    const productInput = document.querySelector('input[name="product_id"]');
-
-    if (wishlistBtn) {
+      let productId;
+      const wishlistBtn = document.querySelector('[data-wishlist-id]');
+      if (wishlistBtn) {
         productId = wishlistBtn.getAttribute('data-wishlist-id');
-    } else if (productForm) {
-        productId = productForm.getAttribute('data-product-id');
-    } else if (productInput) {
-        productId = productInput.value;
-    }
+      }
 
-    if (!productId) {
-        console.log('No product ID found, returning');
+      if (!productId) {
+        const productForm = document.querySelector('form[data-product-id]');
+        if (productForm) {
+          productId = productForm.getAttribute('data-product-id');
+        }
+      }
+
+      if (!productId) {
         return;
-    }
+      }
 
-    this.currentProductId = productId;
-    const activeCampaign = this.findActiveCampaignForProduct(productId);
+      this.currentProductId = productId;
+      const activeCampaign = this.findActiveCampaignForProduct(productId);
 
-    console.log('Active Campaign:', activeCampaign);
-
-    if (!activeCampaign) {
-        console.log('No active campaign found, returning');
+      if (!activeCampaign) {
         return;
-    }
+      }
 
-    const timer = this.createCountdownTimer(activeCampaign, productId);
+      const timer = this.createCountdownTimer(activeCampaign, productId);
 
-    // Find the product name container in the Perfect theme
-    const productName = document.querySelector('h1, .product-title, h2:first-of-type');
-    if (productName) {
-        productName.parentNode.insertBefore(timer, productName.nextSibling);
-        console.log('Timer inserted after product name');
-    } else {
-        console.log('Product name element not found');
-    }
+      const priceSelectors = [
+        'h2.product-formatted-price.theme-text-primary',
+        '.product-formatted-price',
+        '.product-formatted-price.theme-text-primary',
+        '.product-price',
+        'h2.theme-text-primary',
+        '.theme-text-primary'
+      ];
 
-    // Create sticky cart after setting up timer
-    this.createStickyCart();
-},
+      let inserted = false;
+      for (const selector of priceSelectors) {
+        const priceContainer = document.querySelector(selector);
+        
+        if (priceContainer?.parentElement) {
+          priceContainer.parentElement.insertBefore(timer, priceContainer);
+          inserted = true;
+          break;
+        }
+      }
+
+      if (!inserted) {
+        const productDetails = document.querySelector('.products-details');
+        if (productDetails) {
+          productDetails.insertBefore(timer, productDetails.firstChild);
+        }
+      }
+
+      // Create sticky cart after setting up timer
+      this.createStickyCart();
+    },
 
     startTimerUpdates() {
       if (this.updateInterval) {
