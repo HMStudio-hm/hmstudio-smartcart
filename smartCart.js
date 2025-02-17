@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.8.1
+// src/scripts/smartCart.js v1.8.2
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -460,10 +460,13 @@
   
       container.appendChild(timeElement);
   
-      // Find the !js-card-top element and insert timer after it
-      const cardTop = document.querySelector('.!js-card-top');
-      if (cardTop) {
-          cardTop.parentNode.insertBefore(container, cardTop.nextSibling);
+      // Find product card container and insert timer after image
+      const productCard = document.querySelector(`.card-product img[alt="${productId}"]`)?.closest('.card-product');
+      if (productCard) {
+          const image = productCard.querySelector('img');
+          if (image) {
+              image.parentNode.insertBefore(container, image.nextSibling);
+          }
       }
   
       let endTime = campaign.endTime?._seconds ? 
@@ -638,63 +641,51 @@
       });
   },
 
-    setupProductTimer() {
-      console.log('Setting up product timer...');
-  
-      let productId = null;
-      const wishlistBtn = document.querySelector('[data-wishlist-id]');
-      const productForm = document.querySelector('form[data-product-id]');
-      const productInput = document.querySelector('input[name="product_id"]');
-  
-      // Add debug logs
-      console.log('Found elements:', {
-          wishlistBtn: !!wishlistBtn,
-          productForm: !!productForm,
-          productInput: !!productInput
-      });
-  
-      if (wishlistBtn) {
-          productId = wishlistBtn.getAttribute('data-wishlist-id');
-      } else if (productForm) {
-          productId = productForm.getAttribute('data-product-id');
-      } else if (productInput) {
-          productId = productInput.value;
-      }
-  
-      console.log('Found Product ID:', productId);
-  
-      if (!productId) {
-          console.log('No product ID found, returning');
-          return;
-      }
-  
-      this.currentProductId = productId;
-      const activeCampaign = this.findActiveCampaignForProduct(productId);
-  
-      console.log('Active Campaign:', activeCampaign);
-  
-      if (!activeCampaign) {
-          console.log('No active campaign found, returning');
-          return;
-      }
-  
-      const timer = this.createCountdownTimer(activeCampaign, productId);
-  
-      // Find the target card element
-      const targetCard = document.querySelector('.card.border-0.mb-3.p-0');
-      console.log('Found target card:', !!targetCard);
-  
-      if (targetCard) {
-          // Insert timer before the card
-          targetCard.parentNode.insertBefore(timer, targetCard);
-          console.log('Timer inserted before card');
-      } else {
-          console.log('Target card not found');
-      }
-  
-      // Create sticky cart after setting up timer
-      this.createStickyCart();
-  },
+  setupProductTimer() {
+    console.log('Setting up product timer...');
+
+    let productId = null;
+    const wishlistBtn = document.querySelector('[data-wishlist-id]');
+    const productForm = document.querySelector('form[data-product-id]');
+    const productInput = document.querySelector('input[name="product_id"]');
+
+    if (wishlistBtn) {
+        productId = wishlistBtn.getAttribute('data-wishlist-id');
+    } else if (productForm) {
+        productId = productForm.getAttribute('data-product-id');
+    } else if (productInput) {
+        productId = productInput.value;
+    }
+
+    if (!productId) {
+        console.log('No product ID found, returning');
+        return;
+    }
+
+    this.currentProductId = productId;
+    const activeCampaign = this.findActiveCampaignForProduct(productId);
+
+    console.log('Active Campaign:', activeCampaign);
+
+    if (!activeCampaign) {
+        console.log('No active campaign found, returning');
+        return;
+    }
+
+    const timer = this.createCountdownTimer(activeCampaign, productId);
+
+    // Find the product name container in the Perfect theme
+    const productName = document.querySelector('h1, .product-title, h2:first-of-type');
+    if (productName) {
+        productName.parentNode.insertBefore(timer, productName.nextSibling);
+        console.log('Timer inserted after product name');
+    } else {
+        console.log('Product name element not found');
+    }
+
+    // Create sticky cart after setting up timer
+    this.createStickyCart();
+},
 
     startTimerUpdates() {
       if (this.updateInterval) {
