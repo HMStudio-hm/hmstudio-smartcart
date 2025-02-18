@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v2.0.0
+// src/scripts/smartCart.js v2.0.1
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -316,39 +316,30 @@
     },
 
     findActiveCampaignForProduct(productId) {
-      console.log('Finding campaign for product:', productId);
-      console.log('Available campaigns:', this.campaigns);
-    
       const now = new Date();
       const activeCampaign = this.campaigns.find(campaign => {
         if (!campaign.products || !Array.isArray(campaign.products)) {
-          console.log('Campaign has no products array:', campaign);
           return false;
         }
     
         const hasProduct = campaign.products.some(p => p.id === productId);
-        console.log('Product in campaign:', hasProduct);
     
         let endTime;
         try {
           endTime = campaign.endTime?._seconds ? 
             new Date(campaign.endTime._seconds * 1000) :
             new Date(campaign.endTime.seconds * 1000);
-          console.log('Campaign end time:', endTime);
         } catch (error) {
-          console.log('Error parsing end time:', error);
           return false;
         }
     
         if (!(endTime instanceof Date && !isNaN(endTime))) {
-          console.log('Invalid end time');
           return false;
         }
     
         return hasProduct && (now <= endTime || campaign.timerSettings.autoRestart) && campaign.status === 'active';
       });
     
-      console.log('Found active campaign:', activeCampaign);
       return activeCampaign;
     },
 
@@ -609,61 +600,48 @@
     },
 
     setupProductCardTimers() {
-      console.log('Setting up product card timers...');
-      
-      // Support both themes' product card structures
       const productCardSelectors = [
-        '.product-item', // Soft theme
-        '.card.card-product' // Perfect theme
+        '.product-item',
+        '.card.card-product'
       ];
     
       const processedCards = new Set();
       
       productCardSelectors.forEach(selector => {
         const productCards = document.querySelectorAll(selector);
-        console.log(`Found ${productCards.length} cards with selector: ${selector}`);
         
         productCards.forEach(card => {
           let productId = null;
-          console.log('Checking card for product ID:', card);
-    
-          // Try multiple selectors for product ID
           const idSelectors = [
-            '[data-wishlist-id]',  // Soft theme
-            'input[name="product_id"]', // Perfect theme
-            '#product-id', // Perfect theme alternate
-            '.js-add-to-cart' // Perfect theme button
+            '[data-wishlist-id]',
+            'input[name="product_id"]',
+            '#product-id',
+            '.js-add-to-cart'
           ];
     
           for (const idSelector of idSelectors) {
             const element = card.querySelector(idSelector);
-            console.log('Trying selector:', idSelector, 'Found element:', element);
             if (element) {
               productId = element.getAttribute('data-wishlist-id') || 
                          element.getAttribute('onclick')?.match(/\'(.*?)\'/)?.[1] || 
                          element.value;
-              console.log('Found product ID:', productId, 'using selector:', idSelector);
               break;
             }
           }
     
           if (productId && !processedCards.has(productId)) {
-            console.log('Processing product ID:', productId);
             processedCards.add(productId);
             
             const activeCampaign = this.findActiveCampaignForProduct(productId);
-            console.log('Active campaign for product:', activeCampaign);
     
             if (activeCampaign) {
               const timer = this.createProductCardTimer(activeCampaign, productId);
-              console.log('Created timer for product card');
     
-              // Try multiple selectors for insertion point
               const insertionPoints = [
-                '.content', // Soft theme
-                '.card-body', // Perfect theme
-                '.product-content', // Generic fallback
-                '.card-footer'  // Perfect theme alternate
+                '.content',
+                '.card-body',
+                '.product-content',
+                '.card-footer'
               ];
     
               for (const selector of insertionPoints) {
@@ -672,22 +650,17 @@
                   const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
                   if (!existingTimer) {
                     container.parentNode.insertBefore(timer, container.nextSibling);
-                    console.log('Timer inserted into product card');
                   }
                   break;
                 }
               }
             }
-          } else {
-            console.log('No product ID found or card already processed');
           }
         });
       });
     },
 
     setupProductTimer() {
-      console.log('Setting up product timer for detail page');
-    
       let productId = null;
       
       const idSelectors = [
@@ -709,35 +682,22 @@
         }
       ];
     
-      console.log('Searching for product ID using selectors:', idSelectors);
-    
       for (const {selector, attribute} of idSelectors) {
         const element = document.querySelector(selector);
-        console.log('Trying selector:', selector, 'Found element:', element);
-        
         if (element) {
           productId = element.getAttribute(attribute) || element.value;
-          console.log('Found product ID:', productId, 'using selector:', selector);
           break;
         }
       }
     
-      if (!productId) {
-        console.log('No product ID found on page');
-        return;
-      }
+      if (!productId) return;
     
       this.currentProductId = productId;
       const activeCampaign = this.findActiveCampaignForProduct(productId);
-      console.log('Active campaign:', activeCampaign);
     
-      if (!activeCampaign) {
-        console.log('No active campaign found');
-        return;
-      }
+      if (!activeCampaign) return;
     
       const timer = this.createCountdownTimer(activeCampaign, productId);
-      console.log('Created countdown timer');
     
       const insertionPoints = [
         {
@@ -762,7 +722,6 @@
         }
       ];
     
-      let inserted = false;
       for (const point of insertionPoints) {
         const container = document.querySelector(point.container);
         if (container) {
@@ -771,23 +730,14 @@
           } else {
             container.insertBefore(timer, container.firstChild);
           }
-          inserted = true;
-          console.log('Timer inserted using selector:', point.container);
           break;
         }
       }
     
-      if (!inserted) {
-        console.log('Could not find insertion point for timer');
-      }
-    
-      // Create sticky cart after setting up timer
       this.createStickyCart();
     
-      // Start the interval to update timers
       if (this.activeTimers.size > 0) {
         this.startTimerUpdates();
-        console.log('Timer updates started');
       }
     },
 
@@ -806,7 +756,7 @@
     },
 
     initialize() {
-      console.log('Initializing Smart Cart with campaigns:', this.campaigns);
+      console.log('Initializing Smart Cart');
       
       this.stopTimerUpdates();
       
@@ -814,10 +764,8 @@
       const isProductPage = document.querySelector('.product.products-details-page') || 
                            document.querySelector('.js-details-section') ||
                            document.querySelector('#productId');
-      console.log('Is product page:', isProductPage);
       
       if (isProductPage) {
-        console.log('On product page, setting up timer');
         // Create sticky cart regardless of campaigns
         this.createStickyCart();
     
@@ -839,10 +787,8 @@
       } else {
         // Check if we're on a product listing page using both themes' selectors
         const productCards = document.querySelectorAll('.product-item, .card.card-product');
-        console.log('Found product cards:', productCards.length);
         
         if (productCards.length > 0) {
-          console.log('On product listing page, setting up card timers');
           this.setupProductCardTimers();
           if (this.activeTimers.size > 0) {
             this.startTimerUpdates();
@@ -851,42 +797,33 @@
       }
     
       // Add observer to handle dynamic content changes
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach(mutation => {
-          console.log('DOM mutation observed:', mutation.type);
-          
-          if (isProductPage) {
-            // Check if sticky cart needs to be recreated
-            if (!document.getElementById('hmstudio-sticky-cart')) {
-              console.log('Recreating sticky cart');
-              this.createStickyCart();
-            }
-    
-            // Check if timer needs to be updated
-            if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-              console.log('Recreating product timer');
-              this.setupProductTimer();
-            }
-          } else {
-            // Check for product cards after mutation
-            const currentCards = document.querySelectorAll('.product-item, .card.card-product');
-            if (currentCards.length > 0) {
-              console.log('Updating product card timers');
-              this.setupProductCardTimers();
-            }
+      const observer = new MutationObserver(() => {
+        if (isProductPage) {
+          // Check if sticky cart needs to be recreated
+          if (!document.getElementById('hmstudio-sticky-cart')) {
+            this.createStickyCart();
           }
-        });
+    
+          // Check if timer needs to be updated
+          if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+            this.setupProductTimer();
+          }
+        } else {
+          // Check for product cards after mutation
+          const currentCards = document.querySelectorAll('.product-item, .card.card-product');
+          if (currentCards.length > 0) {
+            this.setupProductCardTimers();
+          }
+        }
       });
     
       observer.observe(document.body, { 
         childList: true, 
         subtree: true 
       });
-      console.log('Mutation observer set up');
-  
+    
       // Start timer updates if needed
       if (this.activeTimers.size > 0) {
-        console.log('Starting timer updates');
         this.startTimerUpdates();
       }
     }
