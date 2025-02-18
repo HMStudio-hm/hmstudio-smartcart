@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v2.0.1
+// src/scripts/smartCart.js v2.0.2
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -637,21 +637,31 @@
             if (activeCampaign) {
               const timer = this.createProductCardTimer(activeCampaign, productId);
     
-              const insertionPoints = [
-                '.content',
-                '.card-body',
-                '.product-content',
-                '.card-footer'
-              ];
+              // For Perfect theme, target the image container directly
+              const imageContainer = card.querySelector('.js-card-tops');
+              if (imageContainer) {
+                const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
+                if (!existingTimer) {
+                  imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
+                }
+              } else {
+                // Fallback for Soft theme
+                const insertionPoints = [
+                  '.content',
+                  '.card-body',
+                  '.product-content',
+                  '.card-footer'
+                ];
     
-              for (const selector of insertionPoints) {
-                const container = card.querySelector(selector);
-                if (container) {
-                  const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-                  if (!existingTimer) {
-                    container.parentNode.insertBefore(timer, container.nextSibling);
+                for (const selector of insertionPoints) {
+                  const container = card.querySelector(selector);
+                  if (container) {
+                    const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
+                    if (!existingTimer) {
+                      container.parentNode.insertBefore(timer, container.nextSibling);
+                    }
+                    break;
                   }
-                  break;
                 }
               }
             }
@@ -696,41 +706,50 @@
       const activeCampaign = this.findActiveCampaignForProduct(productId);
     
       if (!activeCampaign) return;
-    
+
       const timer = this.createCountdownTimer(activeCampaign, productId);
     
-      const insertionPoints = [
-        {
-          container: '.js-product-price',
-          method: 'before'
-        },
-        {
-          container: '.product-formatted-price',
-          method: 'before'
-        },
-        {
-          container: '.js-details-section',
-          method: 'prepend'
-        },
-        {
-          container: '.js-product-old-price',
-          method: 'before'
-        },
-        {
-          container: '.hmstudio-cart-buttons',
-          method: 'before'
-        }
-      ];
-    
-      for (const point of insertionPoints) {
-        const container = document.querySelector(point.container);
-        if (container) {
-          if (point.method === 'before') {
-            container.parentNode.insertBefore(timer, container);
-          } else {
-            container.insertBefore(timer, container.firstChild);
+      // First try to find the card element that comes before the list-group
+      const cardElement = document.querySelector('.card.mb-3.border-secondary.border-opacity-10.shadow-sm');
+      
+      if (cardElement) {
+        // Insert the timer right after the card element
+        cardElement.parentNode.insertBefore(timer, cardElement.nextSibling);
+      } else {
+        // Fallback to other insertion points if the card element is not found
+        const insertionPoints = [
+          {
+            container: '.js-product-price',
+            method: 'before'
+          },
+          {
+            container: '.product-formatted-price',
+            method: 'before'
+          },
+          {
+            container: '.js-details-section',
+            method: 'prepend'
+          },
+          {
+            container: '.js-product-old-price',
+            method: 'before'
+          },
+          {
+            container: '.hmstudio-cart-buttons',
+            method: 'before'
           }
-          break;
+        ];
+    
+        for (const point of insertionPoints) {
+          const container = document.querySelector(point.container);
+          if (container) {
+            if (point.method === 'before') {
+              container.parentNode.insertBefore(timer, container);
+            } else {
+              container.insertBefore(timer, container.firstChild);
+            }
+            break;
+          }
         }
       }
     
