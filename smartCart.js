@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v1.9.8
+// src/scripts/smartCart.js v1.9.9
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -630,7 +630,7 @@ if (productCards.length === 0) {
           const activeCampaign = this.findActiveCampaignForProduct(productId);
           if (activeCampaign) {
             const timer = this.createProductCardTimer(activeCampaign, productId);
-            const imageContainer = card.querySelector('.content, .card-body, .product-content, .card-footer');
+            const imageContainer = card.querySelector('.content, .!js-card-top, .card-body, .product-content, .card-footer');
             if (imageContainer && !document.getElementById(`hmstudio-card-countdown-${productId}`)) {
               imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
             }
@@ -643,9 +643,9 @@ if (productCards.length === 0) {
       console.log('Setting up product timer...');
 
       let productId;
-      const wishlistBtn = document.querySelector('[data-wishlist-id]');
+      const wishlistBtn = document.querySelector('[data-wishlist-id], input[name="product_id"], #product-id, .js-add-to-cart');
       if (wishlistBtn) {
-        productId = wishlistBtn.getAttribute('data-wishlist-id');
+        productId = wishlistBtn.getAttribute('[data-wishlist-id], input[name="product_id"], #product-id, .js-add-to-cart');
       }
 
       if (!productId) {
@@ -718,7 +718,7 @@ if (productCards.length === 0) {
       
       this.stopTimerUpdates();
       
-      if (document.querySelector('.product.products-details-page, .js-details-section')) {
+      if (document.querySelector('.product.products-details-page, .js-details-section, .py-3 js-details-section, .container')) {
         console.log('On product page');
         // Create sticky cart regardless of campaigns
         this.createStickyCart();
