@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v2.0.2
+// src/scripts/smartCart.js v2.0.3
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -637,18 +637,22 @@
             if (activeCampaign) {
               const timer = this.createProductCardTimer(activeCampaign, productId);
     
-              // For Perfect theme, target the image container directly
-              const imageContainer = card.querySelector('.js-card-tops');
-              if (imageContainer) {
-                const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-                if (!existingTimer) {
-                  imageContainer.parentNode.insertBefore(timer, imageContainer.nextSibling);
+              // Perfect theme - target the card-body that contains product details
+              const cardBody = card.querySelector('.card-body');
+              if (cardBody) {
+                // Find the product title/name element
+                const titleElement = cardBody.querySelector('.card-product h2, .hmstudio-product-title');
+                if (titleElement) {
+                  // Insert timer before the title element
+                  titleElement.parentNode.insertBefore(timer, titleElement);
+                } else {
+                  // If no title found, insert at the start of card-body
+                  cardBody.insertBefore(timer, cardBody.firstChild);
                 }
               } else {
                 // Fallback for Soft theme
                 const insertionPoints = [
                   '.content',
-                  '.card-body',
                   '.product-content',
                   '.card-footer'
                 ];
