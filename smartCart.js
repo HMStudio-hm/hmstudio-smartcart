@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v2.0.9
+// src/scripts/smartCart.js v2.1.0
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -425,15 +425,14 @@
       const container = document.createElement('div');
       container.id = `hmstudio-card-countdown-${productId}`;
     
-      // Instead of querying DOM, use parent element class to determine theme
-      const isCardBodyParent = (container) => {
-        return container.parentElement?.querySelector('.card-body') !== null;
-      };
+      // Check if it's Perfect theme by looking for card-body
+      const isPerfectTheme = document.querySelector('.card.card-product .card-body') !== null;
     
       container.style.cssText = `
         background: ${campaign.timerSettings.backgroundColor};
         color: ${campaign.timerSettings.textColor};
         padding: 4px;
+        ${!isPerfectTheme ? 'margin-top: 30px !important;' : ''} 
         border-bottom-right-radius: 8px;
         border-bottom-left-radius: 8px;
         text-align: center;
@@ -475,13 +474,6 @@
         originalDuration: originalDuration,
         isFlashing: false
       });
-
-      setTimeout(() => {
-        if (!isCardBodyParent(container)) {
-          container.style.marginTop = '30px';
-        }
-      }, 0);
-    
 
       return container;
     },
@@ -662,19 +654,11 @@
                 }
               } else {
                 // Soft theme
-                const insertionPoints = [
-                  '.content',
-                  '.product-content'
-                ];
-    
-                for (const selector of insertionPoints) {
-                  const container = card.querySelector(selector);
-                  if (container) {
-                    const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-                    if (!existingTimer) {
-                      container.parentNode.insertBefore(timer, container.nextSibling);
-                    }
-                    break;
+                const productTitle = card.querySelector('.product-title');
+                if (productTitle) {
+                  const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
+                  if (!existingTimer) {
+                    productTitle.parentNode.insertBefore(timer, productTitle);
                   }
                 }
               }
