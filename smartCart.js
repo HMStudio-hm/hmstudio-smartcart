@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v2.1.0
+// src/scripts/smartCart.js v2.1.1
 // HMStudio Smart Cart with Campaign Support
 
 (() => {
@@ -615,56 +615,73 @@
     
       const processedCards = new Set();
       
-      productCardSelectors.forEach(selector => {
-        const productCards = document.querySelectorAll(selector);
+      // Use one querySelector for all cards to minimize DOM operations
+      let allProductCards = [];
+      for (const selector of productCardSelectors) {
+        const cards = document.querySelectorAll(selector);
+        if (cards.length) {
+          allProductCards = Array.from(cards);
+          break;
+        }
+      }
+      
+      allProductCards.forEach(card => {
+        let productId = null;
+        const idSelectors = [
+          '[data-wishlist-id]',
+          'input[name="product_id"]',
+          '#product-id',
+          '.js-add-to-cart'
+        ];
+    
+        // Try to get product ID
+        for (const idSelector of idSelectors) {
+          const element = card.querySelector(idSelector);
+          if (element) {
+            productId = element.getAttribute('data-wishlist-id') || 
+                       element.getAttribute('onclick')?.match(/\'(.*?)\'/)?.[1] || 
+                       element.value;
+            break;
+          }
+        }
+    
+        // Skip if product already processed or no ID found
+        if (!productId || processedCards.has(productId)) {
+          return;
+        }
+    
+        processedCards.add(productId);
         
-        productCards.forEach(card => {
-          let productId = null;
-          const idSelectors = [
-            '[data-wishlist-id]',
-            'input[name="product_id"]',
-            '#product-id',
-            '.js-add-to-cart'
-          ];
+        // Skip if no active campaign
+        const activeCampaign = this.findActiveCampaignForProduct(productId);
+        if (!activeCampaign) {
+          return;
+        }
     
-          for (const idSelector of idSelectors) {
-            const element = card.querySelector(idSelector);
-            if (element) {
-              productId = element.getAttribute('data-wishlist-id') || 
-                         element.getAttribute('onclick')?.match(/\'(.*?)\'/)?.[1] || 
-                         element.value;
-              break;
-            }
-          }
+        // Skip if timer already exists
+        const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
+        if (existingTimer) {
+          return;
+        }
     
-          if (productId && !processedCards.has(productId)) {
-            processedCards.add(productId);
-            
-            const activeCampaign = this.findActiveCampaignForProduct(productId);
+        const timer = this.createProductCardTimer(activeCampaign, productId);
     
-            if (activeCampaign) {
-              const timer = this.createProductCardTimer(activeCampaign, productId);
+        // Perfect theme
+        const cardBody = card.querySelector('.card-body');
+        if (cardBody) {
+          requestAnimationFrame(() => {
+            cardBody.parentNode.insertBefore(timer, cardBody);
+          });
+          return;
+        }
     
-              // Perfect theme
-              const cardBody = card.querySelector('.card-body');
-              if (cardBody) {
-                const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-                if (!existingTimer) {
-                  cardBody.parentNode.insertBefore(timer, cardBody);
-                }
-              } else {
-                // Soft theme
-                const productTitle = card.querySelector('.product-title');
-                if (productTitle) {
-                  const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
-                  if (!existingTimer) {
-                    productTitle.parentNode.insertBefore(timer, productTitle);
-                  }
-                }
-              }
-            }
-          }
-        });
+        // Soft theme
+        const productTitle = card.querySelector('.product-title');
+        if (productTitle) {
+          requestAnimationFrame(() => {
+            productTitle.parentNode.insertBefore(timer, productTitle);
+          });
+        }
       });
     },
 
@@ -777,16 +794,12 @@
       
       this.stopTimerUpdates();
       
-      // Check if we're on a product page using both themes' selectors
       const isProductPage = document.querySelector('.product.products-details-page') || 
                            document.querySelector('.js-details-section') ||
                            document.querySelector('#productId');
       
       if (isProductPage) {
-        // Create sticky cart regardless of campaigns
         this.createStickyCart();
-    
-        // Setup timer if there's an active campaign
         const wishlistBtn = document.querySelector('[data-wishlist-id]');
         const productForm = document.querySelector('form[data-product-id]');
         const productId = wishlistBtn?.getAttribute('data-wishlist-id') || 
@@ -802,9 +815,7 @@
           }
         }
       } else {
-        // Check if we're on a product listing page using both themes' selectors
         const productCards = document.querySelectorAll('.product-item, .card.card-product');
-        
         if (productCards.length > 0) {
           this.setupProductCardTimers();
           if (this.activeTimers.size > 0) {
@@ -813,25 +824,29 @@
         }
       }
     
-      // Add observer to handle dynamic content changes
-      const observer = new MutationObserver(() => {
-        if (isProductPage) {
-          // Check if sticky cart needs to be recreated
-          if (!document.getElementById('hmstudio-sticky-cart')) {
-            this.createStickyCart();
-          }
-    
-          // Check if timer needs to be updated
-          if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
-            this.setupProductTimer();
-          }
-        } else {
-          // Check for product cards after mutation
-          const currentCards = document.querySelectorAll('.product-item, .card.card-product');
-          if (currentCards.length > 0) {
-            this.setupProductCardTimers();
-          }
+      // Add debounced observer
+      let timeout;
+      const observer = new MutationObserver((mutations) => {
+        if (timeout) {
+          clearTimeout(timeout);
         }
+        
+        timeout = setTimeout(() => {
+          if (isProductPage) {
+            if (!document.getElementById('hmstudio-sticky-cart')) {
+              this.createStickyCart();
+            }
+    
+            if (this.currentProductId && !document.getElementById(`hmstudio-countdown-${this.currentProductId}`)) {
+              this.setupProductTimer();
+            }
+          } else {
+            const currentCards = document.querySelectorAll('.product-item, .card.card-product');
+            if (currentCards.length > 0) {
+              this.setupProductCardTimers();
+            }
+          }
+        }, 100); // Debounce time of 100ms
       });
     
       observer.observe(document.body, { 
