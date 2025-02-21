@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v2.1.7
+// src/scripts/smartCart.js v2.1.8
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -314,26 +314,41 @@
     findActiveCampaignForProduct(productId) {
       const now = new Date();
       const activeCampaign = this.campaigns.find(campaign => {
+        // First check if campaign is active
+        if (campaign.status !== 'active') {
+          return false;
+        }
+    
+        // Check if campaign has valid products array
         if (!campaign.products || !Array.isArray(campaign.products)) {
           return false;
         }
     
+        // Check if product is in campaign
         const hasProduct = campaign.products.some(p => p.id === productId);
+        if (!hasProduct) {
+          return false;
+        }
     
+        // Parse end time
         let endTime;
         try {
           endTime = campaign.endTime?._seconds ? 
             new Date(campaign.endTime._seconds * 1000) :
             new Date(campaign.endTime.seconds * 1000);
         } catch (error) {
+          console.error('Error parsing end time:', error);
           return false;
         }
     
+        // Validate end time
         if (!(endTime instanceof Date && !isNaN(endTime))) {
+          console.error('Invalid end time');
           return false;
         }
     
-        return hasProduct && (now <= endTime || campaign.timerSettings.autoRestart) && campaign.status === 'active';
+        // Check if campaign is still valid (not expired or has auto-restart)
+        return now <= endTime || campaign.timerSettings.autoRestart;
       });
     
       return activeCampaign;
