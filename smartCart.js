@@ -1,4 +1,4 @@
-// src/scripts/smartCart.js v2.1.4
+// src/scripts/smartCart.js v2.1.5
 // HMStudio Smart Cart with Campaign Support
 
 (function() {
@@ -389,74 +389,105 @@ const loadTimerState = (productId) => {
       return activeCampaign;
     },
 
-    createCountdownTimer(campaign, productId) {
-      const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`);
-      if (existingTimer) {
-        existingTimer.remove();
-        if (this.activeTimers.has(productId)) {
-          clearInterval(this.activeTimers.get(productId));
-          this.activeTimers.delete(productId);
-        }
-      }
+    // Modify the createCountdownTimer method in the SmartCart object
 
-      const container = document.createElement('div');
-      container.id = `hmstudio-countdown-${productId}`;
-      container.style.cssText = `
-        background: ${campaign.timerSettings.backgroundColor};
-        color: ${campaign.timerSettings.textColor};
-        padding: ${isMobile() ? '8px 10px' : '12px 15px'};
-        margin: ${isMobile() ? '10px 0' : '15px 0'};
-        border-radius: 8px;
-        text-align: center;
-        direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: ${isMobile() ? '8px' : '12px'};
-        font-size: ${isMobile() ? '12px' : '14px'};
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        flex-wrap: ${isMobile() ? 'wrap' : 'nowrap'};
-        width: ${isMobile() ? '100%' : 'auto'};
-      `;
+createCountdownTimer(campaign, productId) {
+  const existingTimer = document.getElementById(`hmstudio-countdown-${productId}`);
+  if (existingTimer) {
+    existingTimer.remove();
+    if (this.activeTimers.has(productId)) {
+      clearInterval(this.activeTimers.get(productId));
+      this.activeTimers.delete(productId);
+    }
+  }
 
-      const textElement = document.createElement('span');
-      const timerText = getCurrentLanguage() === 'ar' ? 
-        campaign.timerSettings.textAr : 
-        campaign.timerSettings.textEn;
-      textElement.textContent = timerText;
-      textElement.style.cssText = `
-        font-weight: 500;
-        ${isMobile() ? 'width: 100%; margin-bottom: 4px;' : ''}
-      `;
-        
-      const timeElement = document.createElement('div');
-      timeElement.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: bold;
-        padding: 4px 8px;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.15);
-        ${isMobile() ? 'width: 100%; justify-content: center;' : ''}
-      `;
+  const container = document.createElement('div');
+  container.id = `hmstudio-countdown-${productId}`;
+  container.style.cssText = `
+    background: ${campaign.timerSettings.backgroundColor};
+    color: ${campaign.timerSettings.textColor};
+    padding: ${isMobile() ? '8px 10px' : '12px 15px'};
+    margin: ${isMobile() ? '10px 0' : '15px 0'};
+    border-radius: 8px;
+    text-align: center;
+    direction: ${getCurrentLanguage() === 'ar' ? 'rtl' : 'ltr'};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: ${isMobile() ? '8px' : '12px'};
+    font-size: ${isMobile() ? '12px' : '14px'};
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex-wrap: ${isMobile() ? 'wrap' : 'nowrap'};
+    width: ${isMobile() ? '100%' : 'auto'};
+  `;
 
-      container.appendChild(textElement);
-      container.appendChild(timeElement);
+  const textElement = document.createElement('span');
+  const timerText = getCurrentLanguage() === 'ar' ? 
+    campaign.timerSettings.textAr : 
+    campaign.timerSettings.textEn;
+  textElement.textContent = timerText;
+  textElement.style.cssText = `
+    font-weight: 500;
+    ${isMobile() ? 'width: 100%; margin-bottom: 4px;' : ''}
+  `;
+    
+  const timeElement = document.createElement('div');
+  timeElement.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    ${isMobile() ? 'width: 100%; justify-content: center;' : ''}
+  `;
 
-      let endTime = campaign.endTime?._seconds ? 
-        new Date(campaign.endTime._seconds * 1000) :
-        new Date(campaign.endTime.seconds * 1000);
+  container.appendChild(textElement);
+  container.appendChild(timeElement);
 
-      this.activeTimers.set(productId, {
-        element: timeElement,
-        endTime: endTime,
-        campaign: campaign,
-        originalDuration: this.originalDurations.get(campaign.id)
-      });
+  // Get end time from saved state or campaign
+  let endTime;
+  const savedState = loadTimerState(productId);
+  const now = new Date();
+  
+  if (savedState && campaign.timerSettings?.autoRestart) {
+    const timePassed = now.getTime() - savedState.lastChecked;
+    const remainingTime = savedState.endTime - savedState.lastChecked;
+    
+    if (remainingTime <= 0) {
+      // Timer had ended, calculate new end time based on original duration
+      const cycles = Math.floor(Math.abs(timePassed) / savedState.originalDuration);
+      endTime = new Date(now.getTime() + (savedState.originalDuration - 
+        (Math.abs(timePassed) - (cycles * savedState.originalDuration))));
+    } else {
+      // Timer hadn't ended, adjust for passed time
+      endTime = new Date(savedState.endTime - timePassed);
+    }
+  } else {
+    endTime = campaign.endTime?._seconds ? 
+      new Date(campaign.endTime._seconds * 1000) :
+      new Date(campaign.endTime.seconds * 1000);
+    
+    // Store original duration if not already saved
+    if (campaign.timerSettings?.autoRestart) {
+      const startTime = campaign.startTime?._seconds ? 
+        new Date(campaign.startTime._seconds * 1000) :
+        new Date(campaign.startTime.seconds * 1000);
+      const originalDuration = endTime - startTime;
+      saveTimerState(productId, endTime, originalDuration);
+    }
+  }
 
-      return container;
-    },
+  this.activeTimers.set(productId, {
+    element: timeElement,
+    endTime: endTime,
+    campaign: campaign,
+    originalDuration: savedState?.originalDuration
+  });
+
+  return container;
+},
 
     createProductCardTimer(campaign, productId) {
       const existingTimer = document.getElementById(`hmstudio-card-countdown-${productId}`);
